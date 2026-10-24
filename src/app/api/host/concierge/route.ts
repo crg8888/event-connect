@@ -23,6 +23,36 @@ function parseReply(raw: string): { reply: string; matches: Match[] } {
   }
 }
 
+export async function GET() {
+  const org = await getOrganizer();
+  if (!org) return NextResponse.json({ error: "Not logged in" }, { status: 401 });
+
+  const rows = await sql`
+    select m.role, m.content, m.agent_id
+    from host_messages m
+    join events e on e.id = m.event_id
+    where e.organizer_id = ${org.id}
+    order by m.id asc
+    limit 100
+  `;
+  const messages = rows.map((r) => {
+    if (r.role === "host") return { role: "user", text: r.content, matches: [] };
+    try {
+      const parsed = JSON.parse(r.content);
+      return {
+        role: "agent",
+        text: String(parsed.reply ?? ""),
+        matches: Array.isArray(parsed.matches) ? parsed.matches : [],
+      };
+    } catch {
+      return { role: "agent", text: r.content, matches: [] };
+    }
+  });
+  const latestAgentId =
+    [...rows].reverse().find((r) => r.agent_id)?.agent_id ?? null;
+  return NextResponse.json({ messages, latest_agent_id: latestAgentId });
+}
+
 export async function POST(req: Request) {
   const org = await getOrganizer();
   if (!org) return NextResponse.json({ error: "Not logged in" }, { status: 401 });
@@ -38,17 +68,29 @@ export async function POST(req: Request) {
   `.catch(() => {});
 
   try {
+    let raw: string;
+    let finalAgentId: string;
     if (agentId) {
-      const raw = await sendMessage(agentId, question);
-      return NextResponse.json({ agentId, ...parseReply(raw) });
+      raw = await sendMessage(agentId, question);
+      finalAgentId = agentId;
+    } else {
+      const instruction = await buildOrganizerInstruction(org.id);
+      const launched = await launchAgent(
+        instruction,
+        question,
+        `envoy-organizer-${org.id}-${Date.now()}`
+      );
+      finalAgentId = launched.agentId;
+      raw = launched.reply;
     }
-    const instruction = await buildOrganizerInstruction(org.id);
-    const { agentId: newId, reply: raw } = await launchAgent(
-      instruction,
-      question,
-      `envoy-organizer-${org.id}-${Date.now()}`
-    );
-    return NextResponse.json({ agentId: newId, ...parseReply(raw) });
+    const parsed = parseReply(raw);
+    void sql`
+      insert into host_messages (event_id, role, content, agent_id)
+      select id, 'agent', ${JSON.stringify(parsed)}, ${finalAgentId}
+      from events where organizer_id = ${org.id}
+      order by id desc limit 1
+    `.catch(() => {});
+    return NextResponse.json({ agentId: finalAgentId, ...parsed });
   } catch (e) {
     console.error("organizer chat error", e);
     return NextResponse.json(

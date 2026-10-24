@@ -441,9 +441,6 @@ function ChatInner() {
                       → {people[match.id].looking_for}
                     </p>
                   )}
-                  <p className="text-[13px] text-zinc-300 mt-2 italic">
-                    &ldquo;{match.icebreaker}&rdquo;
-                  </p>
                 </div>
               ))}
               {m.pings.length > 0 && (

@@ -87,6 +87,16 @@ export default function HostDashboard() {
       if (!ev) return router.replace("/host");
       setEvent(ev);
 
+      fetch("/api/host/concierge")
+        .then((r) => r.json())
+        .then((h) => {
+          if (Array.isArray(h.messages) && h.messages.length) {
+            setChatMsgs(h.messages);
+          }
+          if (h.latest_agent_id) chatAgentRef.current = h.latest_agent_id;
+        })
+        .catch(() => {});
+
       const loadEvent = () =>
         fetch("/api/host/event")
           .then((r) => r.json())
@@ -281,9 +291,6 @@ export default function HostDashboard() {
                           )}
                         </div>
                         <p className="text-[13px] text-zinc-400 mt-1.5">{match.why}</p>
-                        <p className="text-[13px] text-zinc-300 mt-1.5 italic">
-                          &ldquo;{match.icebreaker}&rdquo;
-                        </p>
                       </div>
                     ))}
                   </div>
