@@ -6,32 +6,32 @@ import { useParams } from "next/navigation";
 import Wordmark from "@/components/Wordmark";
 import { Identity, resolveIdentity } from "@/lib/identity";
 
-type Ping = {
+type Thread = {
   id: number;
-  message: string;
-  created_at: string;
-  read_at: string | null;
-  sender_id: number;
-  sender_name: string;
-  sender_headline: string | null;
-  sender_linkedin: string | null;
-  sender_wants: string | null;
+  name: string;
+  headline: string | null;
+  linkedin_url: string | null;
+  looking_for: string | null;
+  last_message: string;
+  last_at: string;
+  from_me: boolean;
+  unread: number;
 };
 
 function timeAgo(iso: string) {
   const diff = Math.max(0, Date.now() - new Date(iso).getTime());
   const m = Math.round(diff / 60000);
-  if (m < 1) return "just now";
-  if (m < 60) return `${m}m ago`;
+  if (m < 1) return "now";
+  if (m < 60) return `${m}m`;
   const h = Math.round(m / 60);
-  if (h < 24) return `${h}h ago`;
-  return `${Math.round(h / 24)}d ago`;
+  if (h < 24) return `${h}h`;
+  return `${Math.round(h / 24)}d`;
 }
 
-export default function Notifications() {
-  const { slug: eventSlug } = useParams<{ slug: string; id: string }>();
+export default function Pings() {
+  const { slug: eventSlug, id: pathId } = useParams<{ slug: string; id: string }>();
   const [me, setMe] = useState<Identity | null>(null);
-  const [pings, setPings] = useState<Ping[]>([]);
+  const [threads, setThreads] = useState<Thread[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,22 +44,21 @@ export default function Notifications() {
         return;
       }
       const load = async () => {
-        const d = await fetch(`/api/pings/mine?id=${id.id}`).then((r) => r.json());
-        setPings(d.pings ?? []);
+        const d = await fetch(`/api/pings/threads?attendeeId=${id.id}`).then((r) =>
+          r.json()
+        );
+        setThreads(d.threads ?? []);
         setLoading(false);
       };
       await load();
-      timer = setInterval(load, 10000);
-      fetch(`/api/pings/read`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ recipientId: id.id }),
-      }).catch(() => {});
+      timer = setInterval(load, 7000);
     })();
     return () => {
       if (timer) clearInterval(timer);
     };
   }, []);
+
+  const base = eventSlug && pathId ? `/e/${eventSlug}/a/${pathId}` : "";
 
   return (
     <main className="max-w-md mx-auto px-4 pt-6 pb-24">
@@ -86,54 +85,52 @@ export default function Notifications() {
         </p>
       ) : loading ? (
         <p className="text-sm text-zinc-600">Loading…</p>
-      ) : pings.length === 0 ? (
+      ) : threads.length === 0 ? (
         <div className="text-sm text-zinc-500 bg-zinc-900/40 border border-zinc-800/60 rounded-xl px-4 py-6 text-center">
           <p>No pings yet.</p>
-          <p className="text-xs text-zinc-600 mt-1">
-            When someone asks Hacky to meet you, it shows up here.
+          <p className="text-xs text-zinc-600 mt-2">
+            Ask{" "}
+            <Link href={base} className="text-lime-300">
+              your concierge
+            </Link>{" "}
+            to find people, then ping them.
           </p>
         </div>
       ) : (
         <div className="space-y-2">
-          {pings.map((p) => (
-            <div
-              key={p.id}
-              className={`border rounded-xl px-4 py-3 ${
-                p.read_at
-                  ? "bg-zinc-900/40 border-zinc-800/60"
-                  : "bg-lime-300/5 border-lime-300/30"
+          {threads.map((t) => (
+            <Link
+              key={t.id}
+              href={`${base}/pings/${t.id}`}
+              className={`block border rounded-xl px-4 py-3 ${
+                t.unread > 0
+                  ? "bg-lime-300/5 border-lime-300/30"
+                  : "bg-zinc-900/40 border-zinc-800/60"
               }`}
             >
               <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium">{p.sender_name}</span>
-                <div className="flex items-center gap-3 shrink-0">
-                  {p.sender_linkedin && (
-                    <a
-                      href={p.sender_linkedin}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[10px] uppercase tracking-widest text-zinc-500 hover:text-lime-300"
-                    >
-                      LinkedIn
-                    </a>
+                <span className="text-sm font-medium truncate">{t.name}</span>
+                <div className="flex items-center gap-2 shrink-0">
+                  {t.unread > 0 && (
+                    <span className="min-w-[18px] h-[18px] text-[10px] rounded-full bg-lime-300 text-black font-semibold flex items-center justify-center px-1.5">
+                      {t.unread}
+                    </span>
                   )}
                   <span className="text-[10px] uppercase tracking-widest text-zinc-600">
-                    {timeAgo(p.created_at)}
+                    {timeAgo(t.last_at)}
                   </span>
                 </div>
               </div>
-              {p.sender_headline && (
-                <p className="text-xs text-zinc-500 mt-0.5">{p.sender_headline}</p>
+              {t.headline && (
+                <p className="text-[11px] text-zinc-500 mt-0.5 truncate">{t.headline}</p>
               )}
-              <p className="text-sm text-zinc-200 mt-2">
-                &ldquo;{p.message}&rdquo;
+              <p className="text-[13px] text-zinc-300 mt-1.5 line-clamp-1">
+                {t.from_me ? (
+                  <span className="text-zinc-500">You: </span>
+                ) : null}
+                {t.last_message}
               </p>
-              {p.sender_wants && (
-                <p className="text-[12px] text-lime-300/70 mt-2">
-                  → {p.sender_wants}
-                </p>
-              )}
-            </div>
+            </Link>
           ))}
         </div>
       )}

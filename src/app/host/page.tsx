@@ -106,7 +106,10 @@ export default function Host() {
         return;
       }
       if (data.name) setEventName(data.name);
-      if (data.description) setAgenda(data.description);
+      if (data.agenda) setAgenda(data.agenda);
+      else if (data.description) setAgenda(data.description);
+      if (data.agent_name) setAgentName(data.agent_name);
+      if (data.welcome) setWelcomeTemplate(data.welcome);
       setPhase("form");
     } catch {
       setScanError("Luma didn't respond. Enter the details manually.");
