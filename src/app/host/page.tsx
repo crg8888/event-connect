@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Wordmark from "@/components/Wordmark";
 
@@ -46,6 +46,17 @@ export default function Host() {
   const [enriched, setEnriched] = useState<Enriched[]>([]);
   const [progress, setProgress] = useState(0);
   const [linkedinCount, setLinkedinCount] = useState(0);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const me = await fetch("/api/auth/me");
+      if (!me.ok) return router.replace("/login");
+      const event = await fetch("/api/host/event").then((r) => r.json());
+      if (event) return router.replace("/host/dashboard");
+      setChecking(false);
+    })();
+  }, [router]);
 
   function connectLuma() {
     if (!apiKey.trim()) return;
@@ -68,7 +79,7 @@ export default function Host() {
 
   async function launch() {
     if (!ready) return;
-    await fetch("/api/event", {
+    await fetch("/api/host/event", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ name: eventName.trim(), lumaUrl: lumaUrl.trim(), agenda: agenda.trim() }),
@@ -101,7 +112,9 @@ export default function Host() {
         <span className="text-[11px] uppercase tracking-widest text-zinc-600">for hosts</span>
       </header>
 
-      {phase === "form" && (
+      {checking && <p className="text-sm text-zinc-600">Loading…</p>}
+
+      {!checking && phase === "form" && (
         <>
           <h1 className="text-3xl font-semibold tracking-tight leading-tight">
             Your guest list is an asset.

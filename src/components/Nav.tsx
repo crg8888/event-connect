@@ -38,7 +38,13 @@ const tabs = [
 
 export default function Nav() {
   const pathname = usePathname();
-  if (pathname.startsWith("/host") || pathname === "/qr") return null;
+  if (
+    pathname.startsWith("/host") ||
+    pathname === "/qr" ||
+    pathname === "/login" ||
+    pathname === "/signup"
+  )
+    return null;
   return (
     <nav className="fixed bottom-0 inset-x-0 z-50 bg-black/80 backdrop-blur-xl border-t border-zinc-800/60">
       <div className="max-w-md mx-auto flex">

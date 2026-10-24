@@ -12,11 +12,15 @@ export default function Directory() {
   const [me, setMe] = useState<Identity | null>(null);
   const [savedIds, setSavedIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [eventSlug, setEventSlug] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     const id = getIdentity();
     setMe(id);
-    fetch("/api/attendees")
+    const slug =
+      new URLSearchParams(window.location.search).get("e") ?? id?.event ?? undefined;
+    setEventSlug(slug);
+    fetch(`/api/attendees${slug ? `?e=${encodeURIComponent(slug)}` : ""}`)
       .then((r) => r.json())
       .then(setPeople)
       .finally(() => setLoading(false));
@@ -65,7 +69,7 @@ export default function Directory() {
 
       {!me ? (
         <Link
-          href="/claim"
+          href={eventSlug ? `/claim?e=${encodeURIComponent(eventSlug)}` : "/claim"}
           className="block bg-lime-300 text-black font-semibold rounded-xl px-4 py-3.5 mb-4 text-center text-sm"
         >
           You&apos;re on this list — claim your profile

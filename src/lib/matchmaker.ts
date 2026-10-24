@@ -1,11 +1,21 @@
 import { sql, Attendee } from "./db";
 
 export async function buildInstruction(selfId: number | null): Promise<string> {
-  const [event] = await sql`select name, agenda from events order by id limit 1`;
-  const attendees = (await sql`
-    select id, name, headline, description, luma_bio, linkedin_url, claimed, looking_for
-    from attendees order by id
-  `) as unknown as Attendee[];
+  const [event] = selfId
+    ? await sql`
+        select e.id, e.name, e.agenda from events e
+        join attendees a on a.event_id = e.id where a.id = ${selfId}
+      `
+    : await sql`select id, name, agenda from events order by id limit 1`;
+  const attendees = (await (event
+    ? sql`
+        select id, name, headline, description, luma_bio, linkedin_url, claimed, looking_for
+        from attendees where event_id = ${event.id} order by id
+      `
+    : sql`
+        select id, name, headline, description, luma_bio, linkedin_url, claimed, looking_for
+        from attendees order by id
+      `)) as unknown as Attendee[];
 
   const self = selfId ? attendees.find((a) => a.id === selfId) : null;
 

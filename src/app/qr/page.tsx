@@ -1,18 +1,25 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import Wordmark from "@/components/Wordmark";
 
 export default function QR() {
+  const router = useRouter();
   const [url, setUrl] = useState("");
   const [eventName, setEventName] = useState("");
+
   useEffect(() => {
-    setUrl(`${window.location.origin}/claim`);
-    fetch("/api/event")
-      .then((r) => r.json())
-      .then((e) => setEventName(e?.name ?? ""));
-  }, []);
+    (async () => {
+      const res = await fetch("/api/host/event");
+      if (res.status === 401) return router.replace("/login");
+      const ev = await res.json();
+      if (!ev) return router.replace("/host");
+      setEventName(ev.name);
+      setUrl(`${window.location.origin}/claim?e=${ev.slug}`);
+    })();
+  }, [router]);
 
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-6 text-center">

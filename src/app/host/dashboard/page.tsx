@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { QRCodeSVG } from "qrcode.react";
 import Wordmark from "@/components/Wordmark";
 
@@ -23,27 +24,40 @@ type Interest = {
 };
 
 export default function HostDashboard() {
-  const [event, setEvent] = useState<{ name: string } | null>(null);
+  const router = useRouter();
+  const [event, setEvent] = useState<{ name: string; slug: string } | null>(null);
   const [total, setTotal] = useState(0);
   const [claimed, setClaimed] = useState<Claimed[]>([]);
   const [interests, setInterests] = useState<Interest[]>([]);
   const [url, setUrl] = useState("");
 
   useEffect(() => {
-    setUrl(`${window.location.origin}/claim`);
-    fetch("/api/event").then((r) => r.json()).then(setEvent);
-    const load = () =>
-      fetch("/api/host/leads")
-        .then((r) => r.json())
-        .then((d) => {
-          setTotal(d.total);
-          setClaimed(d.claimed);
-          setInterests(d.interests);
-        });
-    load();
-    const t = setInterval(load, 5000);
-    return () => clearInterval(t);
-  }, []);
+    let timer: ReturnType<typeof setInterval> | undefined;
+    (async () => {
+      const res = await fetch("/api/host/event");
+      if (res.status === 401) return router.replace("/login");
+      const ev = await res.json();
+      if (!ev) return router.replace("/host");
+      setEvent(ev);
+      setUrl(`${window.location.origin}/claim?e=${ev.slug}`);
+      const load = () =>
+        fetch("/api/host/leads")
+          .then((r) => r.json())
+          .then((d) => {
+            setTotal(d.total);
+            setClaimed(d.claimed);
+            setInterests(d.interests);
+          });
+      load();
+      timer = setInterval(load, 5000);
+    })();
+    return () => clearInterval(timer);
+  }, [router]);
+
+  async function logout() {
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.replace("/login");
+  }
 
   return (
     <main className="max-w-5xl mx-auto px-6 pt-10 pb-20">
@@ -54,12 +68,20 @@ export default function HostDashboard() {
             {event?.name ?? ""}
           </p>
         </div>
-        <Link
-          href="/qr"
-          className="bg-lime-300 text-black font-semibold rounded-xl px-5 py-2.5 text-sm"
-        >
-          Present QR
-        </Link>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={logout}
+            className="text-[11px] uppercase tracking-widest text-zinc-600 hover:text-zinc-400"
+          >
+            Log out
+          </button>
+          <Link
+            href="/qr"
+            className="bg-lime-300 text-black font-semibold rounded-xl px-5 py-2.5 text-sm"
+          >
+            Present QR
+          </Link>
+        </div>
       </header>
 
       <div className="grid md:grid-cols-[320px_1fr] gap-6">

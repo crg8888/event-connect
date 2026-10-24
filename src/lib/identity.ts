@@ -1,6 +1,6 @@
 "use client";
 
-export type Identity = { id: number; name: string };
+export type Identity = { id: number; name: string; event?: string };
 
 export function getIdentity(): Identity | null {
   if (typeof window === "undefined") return null;
@@ -12,6 +12,6 @@ export function getIdentity(): Identity | null {
   }
 }
 
-export function setIdentity(id: number, name: string) {
-  localStorage.setItem("ec-identity", JSON.stringify({ id, name }));
+export function setIdentity(id: number, name: string, event?: string) {
+  localStorage.setItem("ec-identity", JSON.stringify({ id, name, event }));
 }

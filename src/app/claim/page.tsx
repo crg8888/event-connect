@@ -13,9 +13,15 @@ export default function Claim() {
   const [selected, setSelected] = useState<Person | null>(null);
   const [lookingFor, setLookingFor] = useState("");
   const [busy, setBusy] = useState(false);
+  const [eventSlug, setEventSlug] = useState<string | undefined>(undefined);
 
   useEffect(() => {
-    fetch("/api/attendees")
+    const slug =
+      new URLSearchParams(window.location.search).get("e") ??
+      getIdentity()?.event ??
+      undefined;
+    setEventSlug(slug);
+    fetch(`/api/attendees${slug ? `?e=${encodeURIComponent(slug)}` : ""}`)
       .then((r) => r.json())
       .then((data: Person[]) => {
         setPeople(data);
@@ -43,7 +49,7 @@ export default function Claim() {
       body: JSON.stringify({ attendeeId: selected.id, lookingFor: lookingFor.trim() }),
     });
     if (res.ok) {
-      setIdentity(selected.id, selected.name);
+      setIdentity(selected.id, selected.name, eventSlug);
       router.push("/chat?welcome=1");
     }
     setBusy(false);
