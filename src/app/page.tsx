@@ -2,27 +2,19 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import Wordmark from "@/components/Wordmark";
-import { resolveIdentity } from "@/lib/identity";
+
+type EventRow = { slug: string; name: string };
 
 export default function Landing() {
-  const router = useRouter();
-  const [checking, setChecking] = useState(true);
+  const [events, setEvents] = useState<EventRow[]>([]);
 
   useEffect(() => {
-    (async () => {
-      // If an attendee happens to land here, send them to their room.
-      const me = await resolveIdentity();
-      if (me && me.event) {
-        router.replace(`/e/${me.event}/a/${me.id}`);
-        return;
-      }
-      setChecking(false);
-    })();
-  }, [router]);
-
-  if (checking) return null;
+    fetch("/api/events")
+      .then((r) => r.json())
+      .then((rows: EventRow[]) => setEvents(rows))
+      .catch(() => {});
+  }, []);
 
   return (
     <main className="min-h-screen flex flex-col">
@@ -33,7 +25,7 @@ export default function Landing() {
         </span>
       </header>
 
-      <section className="flex-1 flex flex-col justify-center px-6 pb-20 max-w-xl mx-auto w-full">
+      <section className="flex-1 flex flex-col justify-center px-6 pb-16 max-w-xl mx-auto w-full">
         <h1 className="text-4xl md:text-5xl font-semibold tracking-tight leading-[1.05]">
           Your guest list is an asset.
           <br />
@@ -59,12 +51,32 @@ export default function Landing() {
             Log in
           </Link>
         </div>
-
-        <p className="text-xs text-zinc-700 mt-10 max-w-md">
-          Attendees get in by scanning the event QR — no app, no signup.
-          Hosts register once and run the room from the dashboard.
-        </p>
       </section>
+
+      {events.length > 0 && (
+        <section className="border-t border-zinc-900/80 px-6 py-10 max-w-xl mx-auto w-full">
+          <p className="text-[11px] uppercase tracking-widest text-zinc-500 mb-3">
+            Attending an event?
+          </p>
+          <p className="text-xs text-zinc-600 mb-4">
+            You&apos;d normally scan the QR. If you lost it, pick your event:
+          </p>
+          <div className="space-y-2">
+            {events.map((e) => (
+              <Link
+                key={e.slug}
+                href={`/e/${e.slug}/claim`}
+                className="flex items-center justify-between gap-2 bg-zinc-900/40 border border-zinc-800/60 rounded-xl px-4 py-3 hover:border-lime-300/50"
+              >
+                <span className="text-sm font-medium">{e.name}</span>
+                <span className="text-[11px] uppercase tracking-widest text-zinc-500">
+                  claim →
+                </span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </main>
   );
 }

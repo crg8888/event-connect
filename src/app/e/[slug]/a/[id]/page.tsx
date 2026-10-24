@@ -4,7 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import Wordmark from "@/components/Wordmark";
-import { Identity, resolveIdentity } from "@/lib/identity";
+import { clearIdentity, Identity, resolveIdentity } from "@/lib/identity";
 
 type Match = { id: number; name: string; why: string; icebreaker: string };
 type PingOut = { recipientId: number; message: string };
@@ -301,11 +301,22 @@ function ChatInner() {
             with {agentName.toLowerCase()}
           </p>
         </div>
-        <div className="text-right">
+        <div className="text-right flex items-center gap-3">
           {me ? (
-            <span className="text-[11px] uppercase tracking-widest text-zinc-500">
-              {me.name.split(" ")[0]}
-            </span>
+            <>
+              <span className="text-[11px] uppercase tracking-widest text-zinc-500">
+                {me.name.split(" ")[0]}
+              </span>
+              <button
+                onClick={() => {
+                  clearIdentity();
+                  window.location.href = eventSlug ? `/e/${eventSlug}/claim` : "/";
+                }}
+                className="text-[11px] uppercase tracking-widest text-zinc-600 hover:text-zinc-300"
+              >
+                log out
+              </button>
+            </>
           ) : (
             <Link
               href={eventSlug ? `/e/${eventSlug}/claim` : "/login"}
