@@ -209,6 +209,10 @@ export default function Claim() {
             name="lookingFor"
             className="w-full bg-zinc-900/60 border border-zinc-800/60 rounded-xl px-4 py-3 text-sm outline-none focus:border-lime-300/50 placeholder:text-zinc-600"
           />
+          <p className="text-[11px] text-zinc-600 mt-2 leading-snug">
+            Shown publicly to the host and other attendees in Messages so
+            people can find you.
+          </p>
           {error && <p className="text-xs text-red-400 mt-2">{error}</p>}
           <button
             onClick={submit}

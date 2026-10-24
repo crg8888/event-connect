@@ -31,6 +31,7 @@ export default function Thread() {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const other = Number(partnerId);
 
   useEffect(() => {
@@ -88,6 +89,8 @@ export default function Thread() {
       }
     } finally {
       setSending(false);
+      // keep the mobile keyboard open for rapid-fire replies
+      requestAnimationFrame(() => inputRef.current?.focus());
     }
   }
 
@@ -162,6 +165,7 @@ export default function Thread() {
       >
         <div className="flex gap-2">
           <input
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder={partner ? `Message ${partner.name.split(" ")[0]}` : "Message"}

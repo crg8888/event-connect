@@ -12,8 +12,9 @@ type Thread = {
   headline: string | null;
   linkedin_url: string | null;
   looking_for: string | null;
-  last_message: string;
-  last_at: string;
+  claimed: boolean;
+  last_message: string | null;
+  last_at: string | null;
   from_me: boolean;
   unread: number;
 };
@@ -86,52 +87,63 @@ export default function Pings() {
       ) : loading ? (
         <p className="text-sm text-zinc-600">Loading…</p>
       ) : threads.length === 0 ? (
-        <div className="text-sm text-zinc-500 bg-zinc-900/40 border border-zinc-800/60 rounded-xl px-4 py-6 text-center">
-          <p>No pings yet.</p>
-          <p className="text-xs text-zinc-600 mt-2">
-            Ask{" "}
-            <Link href={base} className="text-lime-300">
-              your concierge
-            </Link>{" "}
-            to find people, then ping them.
-          </p>
-        </div>
+        <p className="text-sm text-zinc-500">No one else is in this room yet.</p>
       ) : (
         <div className="space-y-2">
-          {threads.map((t) => (
-            <Link
-              key={t.id}
-              href={`${base}/pings/${t.id}`}
-              className={`block border rounded-xl px-4 py-3 ${
-                t.unread > 0
-                  ? "bg-lime-300/5 border-lime-300/30"
-                  : "bg-zinc-900/40 border-zinc-800/60"
-              }`}
-            >
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-sm font-medium truncate">{t.name}</span>
-                <div className="flex items-center gap-2 shrink-0">
-                  {t.unread > 0 && (
-                    <span className="min-w-[18px] h-[18px] text-[10px] rounded-full bg-lime-300 text-black font-semibold flex items-center justify-center px-1.5">
-                      {t.unread}
-                    </span>
-                  )}
-                  <span className="text-[10px] uppercase tracking-widest text-zinc-600">
-                    {timeAgo(t.last_at)}
-                  </span>
+          {threads.map((t) => {
+            const hasMessages = Boolean(t.last_message);
+            return (
+              <Link
+                key={t.id}
+                href={`${base}/pings/${t.id}`}
+                className={`block border rounded-xl px-4 py-3 ${
+                  t.unread > 0
+                    ? "bg-lime-300/5 border-lime-300/30"
+                    : hasMessages
+                    ? "bg-zinc-900/60 border-zinc-800/60"
+                    : "bg-zinc-900/30 border-zinc-900/80"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-sm font-medium truncate">{t.name}</span>
+                    {t.claimed && (
+                      <span className="w-1.5 h-1.5 rounded-full bg-lime-300 shrink-0" />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {t.unread > 0 && (
+                      <span className="min-w-[18px] h-[18px] text-[10px] rounded-full bg-lime-300 text-black font-semibold flex items-center justify-center px-1.5">
+                        {t.unread}
+                      </span>
+                    )}
+                    {t.last_at && (
+                      <span className="text-[10px] uppercase tracking-widest text-zinc-600">
+                        {timeAgo(t.last_at)}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-              {t.headline && (
-                <p className="text-[11px] text-zinc-500 mt-0.5 truncate">{t.headline}</p>
-              )}
-              <p className="text-[13px] text-zinc-300 mt-1.5 line-clamp-1">
-                {t.from_me ? (
-                  <span className="text-zinc-500">You: </span>
-                ) : null}
-                {t.last_message}
-              </p>
-            </Link>
-          ))}
+                {t.headline && (
+                  <p className="text-[11px] text-zinc-500 mt-0.5 truncate">{t.headline}</p>
+                )}
+                {hasMessages ? (
+                  <p className="text-[13px] text-zinc-300 mt-1.5 line-clamp-1">
+                    {t.from_me ? <span className="text-zinc-500">You: </span> : null}
+                    {t.last_message}
+                  </p>
+                ) : t.looking_for ? (
+                  <p className="text-[12px] text-lime-300/70 mt-1.5 line-clamp-2">
+                    → {t.looking_for}
+                  </p>
+                ) : (
+                  <p className="text-[11px] text-zinc-600 mt-1.5">
+                    {t.claimed ? "no purpose shared yet" : "not here yet"}
+                  </p>
+                )}
+              </Link>
+            );
+          })}
         </div>
       )}
     </main>
