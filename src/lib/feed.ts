@@ -17,10 +17,12 @@ type CacheEntry = {
   at: number;
   items: FeedItem[];
   scored: boolean;
+  scoredAt?: number;
   scoringPromise?: Promise<FeedItem[]>;
 };
 const cache = new Map<number, CacheEntry>();
 const TTL = 30_000;
+const SCORE_TTL = 120_000;
 
 async function fetchItems(eventId: number): Promise<FeedItem[]> {
   const rows = await sql`
@@ -68,6 +70,7 @@ export async function getFeed(eventId: number): Promise<{
     at: now,
     items: nextItems,
     scored,
+    scoredAt: cached?.scoredAt,
     scoringPromise: cached?.scoringPromise,
   });
   return { items: nextItems, scored };
@@ -76,13 +79,23 @@ export async function getFeed(eventId: number): Promise<{
 export async function scoreFeed(eventId: number): Promise<FeedItem[]> {
   const existing = cache.get(eventId);
   if (existing?.scoringPromise) return existing.scoringPromise;
-  if (existing?.scored && Date.now() - existing.at < TTL) return existing.items;
+  if (
+    existing?.scored &&
+    existing.scoredAt &&
+    Date.now() - existing.scoredAt < SCORE_TTL
+  ) {
+    return existing.items;
+  }
 
-  const promise = runScoring(eventId);
+  const promise = runScoring(eventId).finally(() => {
+    const e = cache.get(eventId);
+    if (e) e.scoringPromise = undefined;
+  });
   cache.set(eventId, {
     at: existing?.at ?? Date.now(),
     items: existing?.items ?? [],
-    scored: false,
+    scored: existing?.scored ?? false,
+    scoredAt: existing?.scoredAt,
     scoringPromise: promise,
   });
   return promise;
@@ -104,7 +117,7 @@ async function runScoring(eventId: number): Promise<FeedItem[]> {
   `;
 
   if (attendees.length === 0) {
-    cache.set(eventId, { at: now, items: [], scored: true });
+    cache.set(eventId, { at: now, items: [], scored: true, scoredAt: now });
     return [];
   }
 
@@ -158,7 +171,7 @@ ${roster}
 
 TASK: Score every attendee from 1 (irrelevant) to 10 (critical). A HIGHER score means the attendee is more useful to the agenda — they could become a customer, they're building something adjacent, they explicitly want something the organizer offers, or they can open relevant doors. Factor [LIVE] in as an actionability bonus (someone useful AND in the room ranks higher than someone equally useful but not yet checked in).
 
-LEAD QUALIFICATION SIGNAL: "ASKING THE CONCIERGE ABOUT" and "DMs SENT" show live, in-the-room intent — someone actively asking for intros that match the agenda is a warm lead and should score HIGHER than an equally relevant but passive attendee. Treat this chat data as PRIVATE INPUT ONLY: the "why" sentence must NEVER quote, paraphrase, or reference anything from their private chats or DMs — build the "why" from public profile + WANTS only.
+LEAD QUALIFICATION SIGNAL: "ASKING THE CONCIERGE ABOUT" and "DMs SENT" show live, in-the-room intent — someone actively asking for intros that match the agenda is a warm lead and should score HIGHER than an equally relevant but passive attendee. In the "why" you MAY summarize their live intent in your own words as an observed interest ("actively hunting for a voice-agent co-founder right now"), but NEVER quote a message verbatim, never name who they messaged, and never reveal that chats are being read — it must sound like insight, not surveillance.
 
 Return VALID JSON ONLY (no markdown fences), shape:
 {"items": [{"id": <number>, "score": <1-10 int>, "why": "<ONE short sentence, specific, no filler>"}]}
@@ -194,7 +207,7 @@ Include EVERY attendee by id. Do not invent ids. The "why" names the exact overl
     };
   });
 
-  cache.set(eventId, { at: now, items, scored: true });
+  cache.set(eventId, { at: now, items, scored: true, scoredAt: Date.now() });
   return items;
 }
 

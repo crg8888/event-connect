@@ -103,7 +103,7 @@ export default function HostDashboard() {
         const d = await fetch("/api/host/feed").then((r) => r.json());
         setFeed(d.items ?? []);
         setFeedLoading(false);
-        if (!d.scored && (d.items ?? []).length > 0) {
+        if ((d.items ?? []).length > 0) {
           fetch("/api/host/feed/score", { method: "POST" })
             .then(() => fetch("/api/host/feed").then((r) => r.json()))
             .then((d2) => setFeed(d2.items ?? []))
