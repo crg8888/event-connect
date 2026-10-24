@@ -59,7 +59,11 @@ export default function Claim() {
     });
     if (res.ok) {
       setIdentity(selected.id, selected.name, eventSlug);
-      router.push("/chat?welcome=1");
+      const q = new URLSearchParams();
+      if (eventSlug) q.set("e", eventSlug);
+      q.set("a", String(selected.id));
+      q.set("welcome", "1");
+      router.push(`/chat?${q.toString()}`);
     } else {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "Could not claim this profile.");
@@ -84,7 +88,11 @@ export default function Claim() {
     if (res.ok) {
       const data = await res.json();
       setIdentity(data.id, data.name, eventSlug);
-      router.push("/chat?welcome=1");
+      const q = new URLSearchParams();
+      if (eventSlug) q.set("e", eventSlug);
+      q.set("a", String(data.id));
+      q.set("welcome", "1");
+      router.push(`/chat?${q.toString()}`);
     } else {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "Could not join as guest.");

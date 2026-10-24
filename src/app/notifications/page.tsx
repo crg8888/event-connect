@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Wordmark from "@/components/Wordmark";
-import { getIdentity, Identity } from "@/lib/identity";
+import { Identity, resolveIdentity } from "@/lib/identity";
 
 type Ping = {
   id: number;
@@ -33,26 +33,36 @@ export default function Notifications() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const id = getIdentity();
-    setMe(id);
-    if (!id) {
-      setLoading(false);
-      return;
-    }
-    const load = async () => {
-      const d = await fetch(`/api/pings/mine?id=${id.id}`).then((r) => r.json());
-      setPings(d.pings ?? []);
-      setLoading(false);
+    let timer: ReturnType<typeof setInterval> | undefined;
+    (async () => {
+      const id = await resolveIdentity();
+      setMe(id);
+      if (!id) {
+        setLoading(false);
+        return;
+      }
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("a") !== String(id.id)) {
+        url.searchParams.set("a", String(id.id));
+        if (id.event) url.searchParams.set("e", id.event);
+        window.history.replaceState(null, "", url.toString());
+      }
+      const load = async () => {
+        const d = await fetch(`/api/pings/mine?id=${id.id}`).then((r) => r.json());
+        setPings(d.pings ?? []);
+        setLoading(false);
+      };
+      await load();
+      timer = setInterval(load, 10000);
+      fetch(`/api/pings/read`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ recipientId: id.id }),
+      }).catch(() => {});
+    })();
+    return () => {
+      if (timer) clearInterval(timer);
     };
-    load();
-    const t = setInterval(load, 10000);
-    // mark all read on view
-    fetch(`/api/pings/read`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ recipientId: id.id }),
-    }).catch(() => {});
-    return () => clearInterval(t);
   }, []);
 
   return (

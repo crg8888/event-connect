@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { getIdentity } from "@/lib/identity";
+import { getIdentity, identityQuery } from "@/lib/identity";
 
 const tabs = [
   {
@@ -39,9 +39,11 @@ const tabs = [
 export default function Nav() {
   const pathname = usePathname();
   const [unread, setUnread] = useState(0);
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     const id = getIdentity();
+    setQuery(identityQuery(id));
     if (!id) return;
     const load = () =>
       fetch(`/api/pings/mine?id=${id.id}`)
@@ -70,7 +72,7 @@ export default function Nav() {
           return (
             <Link
               key={t.href}
-              href={t.href}
+              href={`${t.href}${query}`}
               className={`flex-1 pt-2.5 pb-3 text-center text-[10px] font-medium uppercase tracking-widest relative ${
                 active ? "text-lime-300" : "text-zinc-600"
               }`}

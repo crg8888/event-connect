@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import PersonCard, { Person } from "@/components/PersonCard";
 import Wordmark from "@/components/Wordmark";
-import { getIdentity, Identity } from "@/lib/identity";
+import { Identity, resolveIdentity } from "@/lib/identity";
 
 export default function Saved() {
   const [me, setMe] = useState<Identity | null>(null);
@@ -12,16 +12,24 @@ export default function Saved() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const id = getIdentity();
-    setMe(id);
-    if (!id) {
-      setLoading(false);
-      return;
-    }
-    fetch(`/api/saves?ownerId=${id.id}`)
-      .then((r) => r.json())
-      .then(setPeople)
-      .finally(() => setLoading(false));
+    (async () => {
+      const id = await resolveIdentity();
+      setMe(id);
+      if (!id) {
+        setLoading(false);
+        return;
+      }
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("a") !== String(id.id)) {
+        url.searchParams.set("a", String(id.id));
+        if (id.event) url.searchParams.set("e", id.event);
+        window.history.replaceState(null, "", url.toString());
+      }
+      fetch(`/api/saves?ownerId=${id.id}`)
+        .then((r) => r.json())
+        .then(setPeople)
+        .finally(() => setLoading(false));
+    })();
   }, []);
 
   async function unsave(p: Person) {

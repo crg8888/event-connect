@@ -4,7 +4,7 @@ import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import Wordmark from "@/components/Wordmark";
-import { getIdentity, Identity } from "@/lib/identity";
+import { Identity, resolveIdentity } from "@/lib/identity";
 
 type Match = { id: number; name: string; why: string; icebreaker: string };
 type PingOut = { recipientId: number; message: string };
@@ -44,6 +44,13 @@ function ChatInner() {
   const [pingHint, setPingHint] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const lastSeenPingRef = useRef<number>(0);
+  const pingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (pingTimerRef.current) clearInterval(pingTimerRef.current);
+    };
+  }, []);
   const [suggestions, setSuggestions] = useState<string[] | null>(null);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [people, setPeople] = useState<
@@ -54,9 +61,37 @@ function ChatInner() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const id = getIdentity();
+    let cancelled = false;
+    (async () => {
+      const id = await resolveIdentity();
+      if (cancelled) return;
+      bootstrap(id);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function bootstrap(id: Identity | null) {
     setMe(id);
     const slug = id?.event ?? new URLSearchParams(window.location.search).get("e");
+
+    if (id) {
+      const url = new URL(window.location.href);
+      let changed = false;
+      if (url.searchParams.get("a") !== String(id.id)) {
+        url.searchParams.set("a", String(id.id));
+        changed = true;
+      }
+      if (id.event && url.searchParams.get("e") !== id.event) {
+        url.searchParams.set("e", id.event);
+        changed = true;
+      }
+      if (changed) {
+        window.history.replaceState(null, "", url.toString());
+      }
+    }
 
     fetch(`/api/attendees${slug ? `?e=${encodeURIComponent(slug)}` : ""}`)
       .then((r) => r.json())
@@ -174,10 +209,9 @@ function ChatInner() {
       };
       poll();
       const pingTimer = setInterval(poll, 7000);
-      return () => clearInterval(pingTimer);
+      pingTimerRef.current = pingTimer;
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
