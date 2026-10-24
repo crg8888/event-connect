@@ -47,7 +47,7 @@ export default function Thread() {
         setMessages(d.messages ?? []);
       };
       await load();
-      timer = setInterval(load, 5000);
+      timer = setInterval(load, 2000);
     })();
     return () => {
       if (timer) clearInterval(timer);
@@ -95,7 +95,7 @@ export default function Thread() {
     eventSlug && pathId ? `/e/${eventSlug}/a/${pathId}/pings` : "/";
 
   return (
-    <main className="max-w-md mx-auto h-screen flex flex-col pb-16">
+    <main className="max-w-md mx-auto h-[100dvh] flex flex-col pb-16">
       <header className="shrink-0 flex items-center justify-between px-4 pt-5 pb-3 bg-black border-b border-zinc-900/80">
         <div className="flex items-center gap-3 min-w-0">
           <Link

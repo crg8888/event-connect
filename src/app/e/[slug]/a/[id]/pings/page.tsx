@@ -51,7 +51,7 @@ export default function Pings() {
         setLoading(false);
       };
       await load();
-      timer = setInterval(load, 7000);
+      timer = setInterval(load, 3000);
     })();
     return () => {
       if (timer) clearInterval(timer);

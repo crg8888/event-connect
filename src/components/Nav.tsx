@@ -8,20 +8,20 @@ import { getIdentity } from "@/lib/identity";
 const tabs = [
   {
     key: "chat",
-    label: "Chat",
+    label: "Finder",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-5 h-5 mx-auto mb-1">
-        <path d="M4 6h16v10H8l-4 4V6z" strokeLinejoin="round" />
+        <circle cx="10.5" cy="10.5" r="6" />
+        <path d="M15 15l5 5" strokeLinecap="round" />
       </svg>
     ),
   },
   {
     key: "pings",
-    label: "Pings",
+    label: "Messages",
     icon: (
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-5 h-5 mx-auto mb-1">
-        <path d="M6 16V10a6 6 0 0 1 12 0v6l1.5 2H4.5L6 16z" strokeLinejoin="round" />
-        <path d="M10 20a2 2 0 0 0 4 0" strokeLinecap="round" />
+        <path d="M4 5h16v12H9l-5 4V5z" strokeLinejoin="round" />
       </svg>
     ),
   },

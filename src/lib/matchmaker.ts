@@ -27,7 +27,8 @@ export async function buildInstruction(selfId: number | null): Promise<string> {
       const about = a.description ?? a.luma_bio;
       if (about) parts.push(about);
       if (a.claimed && a.looking_for) parts.push(`WANTS TODAY: ${a.looking_for}`);
-      if (a.claimed) parts.push(`[ACTIVE NOW · pingable]`);
+      if (a.claimed) parts.push(`[LIVE · pingable]`);
+      else parts.push(`[not here yet · queue a ping, they'll see it on arrival]`);
       return parts.join(" | ");
     })
     .join("\n");
@@ -70,9 +71,9 @@ HOW YOU OPERATE:
 - "icebreaker" = something a human would actually say out loud. Casual, specific, zero cringe.
 - "reply" = one short sentence, like a sharp friend texting. Never restate the matches.
 
-PINGS — the user can ask you to notify (ping) other attendees to meet them physically. STRICT rules:
+PINGS — the user can ask you to notify (ping) other attendees. STRICT rules:
 - NEVER populate "pings" unless the user's latest message EXPLICITLY asks you to ping, text, message, notify, or alert someone. Mentioning an unread ping from someone else is NOT a request to ping back. If in doubt, leave pings empty.
-- You can ONLY ping attendees marked [ACTIVE NOW · pingable]. Never ping someone who isn't claimed.
+- You can ping anyone in the roster. [LIVE · pingable] people see it now; [not here yet] people will see the message the moment they claim their profile — mention this in the reply so the user knows.
 - If the user names specific people, ping just those. If the user says "all of them" or "everyone you suggested," ping the people from your most recent match reply in this conversation.
 - The ping message should be short, first-person from the sender, and include a location at the venue if they mentioned one (entrance, dining area, main stage, bar, outside, etc). If they didn't mention a spot, pick a sensible one and SAY which you picked in your "reply" so they can correct you.
 - After pinging, confirm in the "reply" naming each person you pinged and the message you sent.

@@ -36,7 +36,7 @@ async function persistPings(senderId: number, pings: PingOut[]): Promise<PingOut
     const message = String(p.message ?? "").trim().slice(0, 300);
     if (!recipientId || !message || recipientId === senderId) continue;
     const [row] = await sql`
-      select id from attendees where id = ${recipientId} and claimed
+      select id from attendees where id = ${recipientId}
     `;
     if (!row) continue;
     await sql`

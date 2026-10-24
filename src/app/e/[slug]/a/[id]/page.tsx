@@ -293,7 +293,7 @@ function ChatInner() {
   const canShowSuggestions = msgs.length <= 1 && !busy;
 
   return (
-    <main className="max-w-md mx-auto h-screen flex flex-col pb-16">
+    <main className="max-w-md mx-auto h-[100dvh] flex flex-col pb-16">
       <header className="shrink-0 flex items-center justify-between px-4 pt-5 pb-3 bg-black">
         <div>
           <Wordmark className="text-lg" />
