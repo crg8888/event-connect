@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { launchAgent, sendMessage } from "@/lib/omnara";
 import { buildInstruction } from "@/lib/matchmaker";
+import { sql } from "@/lib/db";
 
 export const maxDuration = 60;
 
@@ -22,26 +23,29 @@ function parseReply(raw: string): { reply: string; matches: Match[] } {
 }
 
 export async function POST(req: Request) {
-  const { question, attendeeId, agentId } = await req.json();
-  if (!question) return NextResponse.json({ error: "question required" }, { status: 400 });
+  const { question, attendeeId, agentId, welcome } = await req.json();
+
+  let q = question;
+  if (welcome && attendeeId) {
+    const [me] = await sql`select name, looking_for from attendees where id = ${attendeeId}`;
+    q = `[welcome trigger] ${me?.name ?? "This attendee"} just joined and said they want: "${me?.looking_for ?? ""}". Welcome them in ONE short sentence (first name only), then their top 3 people for exactly that.`;
+  }
+  if (!q) return NextResponse.json({ error: "question required" }, { status: 400 });
 
   try {
     if (agentId) {
-      const raw = await sendMessage(agentId, question);
+      const raw = await sendMessage(agentId, q);
       return NextResponse.json({ agentId, ...parseReply(raw) });
     }
     const instruction = await buildInstruction(attendeeId ?? null);
     const { agentId: newId, reply: raw } = await launchAgent(
       instruction,
-      question,
-      `connect-${attendeeId ?? "guest"}-${Date.now()}`
+      q,
+      `backchannel-${attendeeId ?? "guest"}-${Date.now()}`
     );
     return NextResponse.json({ agentId: newId, ...parseReply(raw) });
   } catch (e) {
     console.error("chat error", e);
-    return NextResponse.json(
-      { error: "The concierge is thinking too hard. Try again." },
-      { status: 502 }
-    );
+    return NextResponse.json({ error: "Concierge hiccup. Try again." }, { status: 502 });
   }
 }

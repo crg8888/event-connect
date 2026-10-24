@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import PersonCard, { Person } from "@/components/PersonCard";
+import Wordmark from "@/components/Wordmark";
 import { getIdentity, Identity } from "@/lib/identity";
 
 export default function Saved() {
@@ -34,31 +35,33 @@ export default function Saved() {
   }
 
   return (
-    <main className="px-4 pt-6">
-      <h1 className="text-2xl font-bold mb-1">Saved people</h1>
-      <p className="text-sm text-zinc-500 mb-4">
-        Your shortlist for today — go say hi before they leave.
-      </p>
+    <main className="max-w-md mx-auto px-4 pt-6 pb-24">
+      <header className="flex items-center justify-between mb-5">
+        <Wordmark className="text-lg" />
+        <span className="text-[11px] uppercase tracking-widest text-zinc-600">
+          shortlist
+        </span>
+      </header>
 
       {!me && (
         <Link
           href="/claim"
-          className="block bg-emerald-500 text-zinc-950 font-semibold rounded-2xl p-4 text-center"
+          className="block bg-lime-300 text-black font-semibold rounded-xl px-4 py-3.5 text-center text-sm"
         >
-          Claim your profile to start saving people
+          Claim your profile first
         </Link>
       )}
-      {loading && me && <p className="text-zinc-500 text-sm">Loading…</p>}
+      {loading && me && <p className="text-zinc-600 text-sm">Loading…</p>}
       {me && !loading && people.length === 0 && (
         <p className="text-zinc-500 text-sm">
-          Nothing saved yet. Ask the{" "}
-          <Link href="/chat" className="text-emerald-400 underline">
+          Empty. Ask the{" "}
+          <Link href="/chat" className="text-lime-300 underline">
             concierge
           </Link>{" "}
-          who you should meet.
+          who&apos;s worth your time.
         </p>
       )}
-      <div className="space-y-3">
+      <div className="space-y-2.5">
         {people.map((p) => (
           <PersonCard key={p.id} person={p} saved onToggleSave={unsave} />
         ))}

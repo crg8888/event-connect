@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Person } from "@/components/PersonCard";
+import Wordmark from "@/components/Wordmark";
 import { getIdentity, setIdentity } from "@/lib/identity";
 
 export default function Claim() {
@@ -43,17 +44,17 @@ export default function Claim() {
     });
     if (res.ok) {
       setIdentity(selected.id, selected.name);
-      router.push("/chat");
+      router.push("/chat?welcome=1");
     }
     setBusy(false);
   }
 
   return (
-    <main className="px-4 pt-6">
-      <h1 className="text-2xl font-bold mb-1">Claim your profile</h1>
-      <p className="text-sm text-zinc-500 mb-4">
-        Pick yourself, say what you&apos;re after today, and the concierge starts
-        matching you with the right people.
+    <main className="max-w-md mx-auto px-4 pt-6 pb-24">
+      <Wordmark className="text-lg block mb-6" />
+      <h1 className="text-xl font-semibold mb-1">Find yourself</h1>
+      <p className="text-sm text-zinc-500 mb-5">
+        One line about what you want today. The concierge handles the rest.
       </p>
 
       {!selected ? (
@@ -61,9 +62,10 @@ export default function Claim() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Type your name…"
+            placeholder="Your name"
             autoFocus
-            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm mb-3 outline-none focus:border-emerald-500"
+            name="name"
+            className="w-full bg-zinc-900/60 border border-zinc-800/60 rounded-xl px-4 py-3 text-sm mb-3 outline-none focus:border-lime-300/50 placeholder:text-zinc-600"
           />
           <div className="space-y-2">
             {query &&
@@ -71,11 +73,11 @@ export default function Claim() {
                 <button
                   key={p.id}
                   onClick={() => setSelected(p)}
-                  className="w-full text-left bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 hover:border-emerald-500"
+                  className="w-full text-left bg-zinc-900/60 border border-zinc-800/60 rounded-xl px-4 py-3 hover:border-lime-300/50"
                 >
-                  <span className="font-medium">{p.name}</span>
+                  <span className="text-sm font-medium">{p.name}</span>
                   {p.headline && (
-                    <span className="block text-xs text-zinc-500">{p.headline}</span>
+                    <span className="block text-xs text-zinc-500 mt-0.5">{p.headline}</span>
                   )}
                 </button>
               ))}
@@ -83,34 +85,32 @@ export default function Claim() {
         </>
       ) : (
         <>
-          <div className="bg-zinc-900 border border-emerald-500/50 rounded-xl px-4 py-3 mb-4">
-            <span className="font-medium">{selected.name}</span>
+          <div className="bg-zinc-900/60 border border-lime-300/30 rounded-xl px-4 py-3 mb-4">
+            <span className="text-sm font-medium">{selected.name}</span>
             {selected.headline && (
-              <span className="block text-xs text-zinc-500">{selected.headline}</span>
+              <span className="block text-xs text-zinc-500 mt-0.5">{selected.headline}</span>
             )}
             <button
               onClick={() => setSelected(null)}
-              className="text-xs text-zinc-500 underline mt-1"
+              className="text-[11px] text-zinc-600 underline mt-1.5"
             >
               not you?
             </button>
           </div>
-          <label className="block text-sm font-medium mb-2">
-            What are you looking for today?
-          </label>
           <textarea
             value={lookingFor}
             onChange={(e) => setLookingFor(e.target.value)}
-            placeholder="e.g. a technical co-founder who knows voice agents, or feedback on my devtool idea"
+            placeholder="What do you want today? e.g. two teammates who can ship frontend"
             rows={3}
-            className="w-full bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 text-sm outline-none focus:border-emerald-500"
+            name="lookingFor"
+            className="w-full bg-zinc-900/60 border border-zinc-800/60 rounded-xl px-4 py-3 text-sm outline-none focus:border-lime-300/50 placeholder:text-zinc-600"
           />
           <button
             onClick={submit}
             disabled={busy || !lookingFor.trim()}
-            className="w-full mt-4 bg-emerald-500 disabled:opacity-40 text-zinc-950 font-semibold rounded-2xl py-3.5"
+            className="w-full mt-4 bg-lime-300 disabled:opacity-30 text-black font-semibold rounded-xl py-3.5 text-sm"
           >
-            {busy ? "Saving…" : "Start matching →"}
+            {busy ? "One sec" : "Enter the room"}
           </button>
         </>
       )}

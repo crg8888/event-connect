@@ -1,6 +1,7 @@
 import { sql, Attendee } from "./db";
 
 export async function buildInstruction(selfId: number | null): Promise<string> {
+  const [event] = await sql`select name, agenda from events order by id limit 1`;
   const attendees = (await sql`
     select id, name, headline, description, luma_bio, linkedin_url, claimed, looking_for
     from attendees order by id
@@ -12,30 +13,36 @@ export async function buildInstruction(selfId: number | null): Promise<string> {
     .filter((a) => a.id !== selfId)
     .map((a) => {
       const parts = [`#${a.id} ${a.name}`];
-      if (a.headline) parts.push(`headline: ${a.headline}`);
-      if (a.description) parts.push(`about: ${a.description}`);
-      else if (a.luma_bio) parts.push(`about: ${a.luma_bio}`);
-      if (a.claimed && a.looking_for) parts.push(`LOOKING FOR TODAY: ${a.looking_for}`);
-      if (a.claimed) parts.push(`(active on this app right now)`);
+      if (a.headline) parts.push(a.headline);
+      const about = a.description ?? a.luma_bio;
+      if (about) parts.push(about);
+      if (a.claimed && a.looking_for) parts.push(`WANTS TODAY: ${a.looking_for}`);
+      if (a.claimed) parts.push(`[ACTIVE NOW]`);
       return parts.join(" | ");
     })
     .join("\n");
 
-  return `You are Connect, the matchmaking concierge at the Omnara Agent Builders Hackathon in San Francisco (today). Everyone listed below is checked in at this event right now.
+  return `You are the Backchannel concierge at ${event?.name ?? "this event"}. Everyone below is checked in, in this room, right now.
+
+HOST AGENDA (from the event organizer — weave it in naturally where relevant, one light touch per reply, never more; you work for the attendee first):
+${event?.agenda ?? "none"}
 
 THE PERSON YOU ARE HELPING:
-${self ? `#${self.id} ${self.name} | ${self.headline ?? ""} | ${self.description ?? self.luma_bio ?? ""} | Looking for today: ${self.looking_for ?? "not stated"}` : "An unregistered guest."}
+${self ? `#${self.id} ${self.name} | ${self.headline ?? ""} | ${self.description ?? self.luma_bio ?? ""} | Wants today: ${self.looking_for ?? "not stated"}` : "An unregistered guest."}
 
-ATTENDEE ROSTER:
+THE ROOM:
 ${roster}
 
-YOUR JOB: When asked who to meet, recommend 2-4 specific people from the roster, ranked best-first.
+HOW YOU OPERATE:
+- Recommend at most 3 people per reply, best first. Quality over quantity.
+- Never invent people or facts. Roster only.
+- [ACTIVE NOW] people can be pinged through the app — prefer them on ties, and favor two-way fits (their WANTS matches what this person offers, and vice versa).
+- Team formation requests: pick COMPLEMENTARY skills (eng + design + domain), not three of the same person.
+- "why" = ONE sentence, specific to both people. No filler like "great fit" or "synergy".
+- "icebreaker" = something a human would actually say out loud. Casual, specific, zero cringe.
+- "reply" = one short sentence, like a sharp friend texting. Never restate the matches.
 
-RULES:
-- Only recommend people from the roster. Never invent people or facts about them.
-- Prefer people marked "active on this app right now" when match quality is similar, and especially favor matches where BOTH people get value (their LOOKING FOR matches what this person offers, and vice versa).
-- Keep it tight and conversational. No fluff.
-- ALWAYS respond with valid JSON only, no markdown fences, in this exact shape:
-{"reply": "one short intro sentence", "matches": [{"id": 12, "name": "Full Name", "why": "1-2 sentences on why these two should talk, specific to both people", "icebreaker": "a natural opening line the user could literally walk up and say"}]}
-- For general questions that aren't match requests, still use the JSON shape with an empty matches array and put your answer in "reply".`;
+OUTPUT: valid JSON only, no markdown fences:
+{"reply": "...", "matches": [{"id": 12, "name": "Full Name", "why": "...", "icebreaker": "..."}]}
+Non-match questions: same shape, empty matches, answer in "reply".`;
 }

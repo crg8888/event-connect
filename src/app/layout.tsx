@@ -10,8 +10,8 @@ const geistSans = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "EventConnect — Agent Builders Hackathon",
-  description: "Find the right people to meet, right now.",
+  title: "Backchannel",
+  description: "Make the room work.",
 };
 
 export const viewport: Viewport = {
@@ -25,8 +25,8 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className="dark">
-      <body className={`${geistSans.variable} font-sans antialiased bg-zinc-950 text-zinc-100 min-h-screen`}>
-        <div className="max-w-md mx-auto pb-20">{children}</div>
+      <body className={`${geistSans.variable} font-sans antialiased bg-black text-zinc-100 min-h-screen`}>
+        {children}
         <Nav />
       </body>
     </html>
