@@ -87,10 +87,11 @@ ${input.attendeeName} | ${input.headline ?? ""} | ${input.description ?? ""}
 WHAT THEY WANT TODAY: ${input.lookingFor ?? "not stated"}
 
 RULES:
-- 3 questions, max 8 words each.
+- Exactly 3 questions, max 8 words each.
 - Written in the attendee's voice — as if they typed it.
 - Specific to their stated want AND background, not generic.
-- Each surfaces a different kind of ask (match by skill, match by goal, roam-the-room exploration).
+- Exactly ONE of the three MUST be a ping-intent chip (asks Envoy to send a ping to someone physically meetable — e.g. "Ping someone building voice agents for me", "Who should I ping to meet now?", "Ping anyone shipping agents today"). The ping chip should feel useful given their stated want.
+- The other two surface different kinds of asks (match by skill, match by goal, roam-the-room exploration).
 - No fluff. No "the room". No "attendees".
 
 Output VALID JSON only, no markdown fences:

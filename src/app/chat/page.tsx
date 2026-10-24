@@ -274,6 +274,21 @@ function ChatInner() {
     });
   }
 
+  function startPingAll() {
+    const prefix = `Ping all of them for me and tell them I'm `;
+    setInput(prefix);
+    setPingHint(
+      "Say the spot — e.g. the entrance, the dining area, the main stage, the bar"
+    );
+    requestAnimationFrame(() => {
+      const el = inputRef.current;
+      if (el) {
+        el.focus();
+        el.setSelectionRange(prefix.length, prefix.length);
+      }
+    });
+  }
+
   async function toggleSave(matchId: number) {
     if (!me) return;
     const isSaved = savedIds.has(matchId);
@@ -423,6 +438,14 @@ function ChatInner() {
                 <div className="bg-lime-300/10 border border-lime-300/40 rounded-xl px-4 py-2.5 text-[12px] text-lime-300">
                   Ping sent — {m.pings.length === 1 ? "1 person" : `${m.pings.length} people`} just got notified.
                 </div>
+              )}
+              {m.matches.length > 0 && m.pings.length === 0 && me && (
+                <button
+                  onClick={startPingAll}
+                  className="text-[12px] uppercase tracking-widest text-lime-300 bg-lime-300/5 border border-lime-300/30 rounded-full px-3.5 py-1.5 hover:bg-lime-300/10 w-fit"
+                >
+                  Want me to ping them for you?
+                </button>
               )}
             </div>
           )

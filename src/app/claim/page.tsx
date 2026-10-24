@@ -59,6 +59,10 @@ export default function Claim() {
     });
     if (res.ok) {
       setIdentity(selected.id, selected.name, eventSlug);
+      // eager-warm suggestions so the chat page sees them stored on first load
+      try {
+        fetch(`/api/suggestions/mine?id=${selected.id}`, { keepalive: true });
+      } catch {}
       const q = new URLSearchParams();
       if (eventSlug) q.set("e", eventSlug);
       q.set("a", String(selected.id));
@@ -88,6 +92,9 @@ export default function Claim() {
     if (res.ok) {
       const data = await res.json();
       setIdentity(data.id, data.name, eventSlug);
+      try {
+        fetch(`/api/suggestions/mine?id=${data.id}`, { keepalive: true });
+      } catch {}
       const q = new URLSearchParams();
       if (eventSlug) q.set("e", eventSlug);
       q.set("a", String(data.id));
