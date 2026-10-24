@@ -16,6 +16,8 @@ export default function Claim() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [eventSlug, setEventSlug] = useState<string | undefined>(undefined);
+  const [guestMode, setGuestMode] = useState(false);
+  const [guestName, setGuestName] = useState("");
 
   useEffect(() => {
     const slug =
@@ -65,6 +67,31 @@ export default function Claim() {
     }
   }
 
+  async function submitGuest() {
+    if (!guestName.trim() || !email.trim() || !lookingFor.trim() || !eventSlug) return;
+    setBusy(true);
+    setError("");
+    const res = await fetch("/api/claim/guest", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: guestName.trim(),
+        email: email.trim(),
+        eventSlug,
+        lookingFor: lookingFor.trim(),
+      }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      setIdentity(data.id, data.name, eventSlug);
+      router.push("/chat?welcome=1");
+    } else {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "Could not join as guest.");
+      setBusy(false);
+    }
+  }
+
   return (
     <main className="max-w-md mx-auto px-4 pt-6 pb-24">
       <Wordmark className="text-lg block mb-6" />
@@ -73,7 +100,49 @@ export default function Claim() {
         One line about what you want today. The concierge handles the rest.
       </p>
 
-      {!selected ? (
+      {guestMode ? (
+        <>
+          <button
+            onClick={() => {
+              setGuestMode(false);
+              setError("");
+            }}
+            className="text-[11px] text-zinc-600 underline mb-4"
+          >
+            ← back to the guest list
+          </button>
+          <input
+            value={guestName}
+            onChange={(e) => setGuestName(e.target.value)}
+            placeholder="Your name"
+            autoFocus
+            className="w-full bg-zinc-900/60 border border-zinc-800/60 rounded-xl px-4 py-3 text-sm mb-3 outline-none focus:border-lime-300/50 placeholder:text-zinc-600"
+          />
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email"
+            autoComplete="email"
+            className="w-full bg-zinc-900/60 border border-zinc-800/60 rounded-xl px-4 py-3 text-sm mb-3 outline-none focus:border-lime-300/50 placeholder:text-zinc-600"
+          />
+          <textarea
+            value={lookingFor}
+            onChange={(e) => setLookingFor(e.target.value)}
+            placeholder="What do you want today?"
+            rows={3}
+            className="w-full bg-zinc-900/60 border border-zinc-800/60 rounded-xl px-4 py-3 text-sm outline-none focus:border-lime-300/50 placeholder:text-zinc-600"
+          />
+          {error && <p className="text-xs text-red-400 mt-2">{error}</p>}
+          <button
+            onClick={submitGuest}
+            disabled={busy || !guestName.trim() || !email.trim() || !lookingFor.trim()}
+            className="w-full mt-4 bg-lime-300 disabled:opacity-30 text-black font-semibold rounded-xl py-3.5 text-sm"
+          >
+            {busy ? "One sec" : "Join as guest"}
+          </button>
+        </>
+      ) : !selected ? (
         <>
           <input
             value={query}
@@ -98,6 +167,15 @@ export default function Claim() {
                 </button>
               ))}
           </div>
+          <button
+            onClick={() => setGuestMode(true)}
+            className="w-full text-left mt-4 bg-zinc-900/40 border border-zinc-800/60 rounded-xl px-4 py-3 hover:border-lime-300/50"
+          >
+            <span className="text-sm font-medium text-zinc-300">Not on the list?</span>
+            <span className="block text-xs text-zinc-500 mt-0.5">
+              Join as a guest with your name and email.
+            </span>
+          </button>
         </>
       ) : (
         <>

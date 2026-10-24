@@ -24,7 +24,7 @@ type Enriched = {
 
 function parseCsv(text: string): Guest[] {
   const emailRe = /[^\s,;"]+@[^\s,;"]+\.[^\s,;"]+/;
-  const linkedinRe = /linkedin\.com\/[a-zA-Z0-9-/_%?=&.]+/i;
+  const linkedinRe = /(?:linkedin\.com|lnkd\.in)\/[a-zA-Z0-9\-/_%?=&.]+/i;
   return text
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -32,16 +32,17 @@ function parseCsv(text: string): Guest[] {
     .map((line) => {
       const cells = line.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
       const email = cells.find((c) => emailRe.test(c)) ?? "";
-      const linkedin = cells.find((c) => linkedinRe.test(c));
+      const linkedinCell = cells.find((c) => linkedinRe.test(c));
+      const match = linkedinCell?.match(linkedinRe)?.[0] ?? null;
       const name =
         cells.find((c) => c && !emailRe.test(c) && !linkedinRe.test(c)) ?? "";
       return {
         name,
         email,
-        linkedin_url: linkedin
-          ? linkedin.startsWith("http")
-            ? linkedin
-            : `https://${linkedin}`
+        linkedin_url: match
+          ? /^https?:\/\//i.test(match)
+            ? match
+            : `https://${match}`
           : null,
       };
     })
