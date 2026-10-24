@@ -111,6 +111,8 @@ export default function Host() {
         welcomeTemplate: welcomeTemplate.trim(),
       }),
     });
+    // fire-and-forget — regen under the research-theater animation
+    void fetch("/api/host/suggestions", { method: "POST" }).catch(() => {});
     const res = await fetch("/api/host/import", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

@@ -7,6 +7,8 @@ type FeedItem = {
   headline: string | null;
   linkedin_url: string | null;
   looking_for: string | null;
+  claimed: boolean;
+  claimed_at: string | null;
   score: number;
   why: string;
 };
@@ -25,10 +27,11 @@ export async function buildBackchannelFeed(eventId: number): Promise<FeedItem[]>
   if (!event) return [];
 
   const attendees = await sql`
-    select id, name, headline, description, linkedin_url, looking_for
+    select id, name, headline, description, linkedin_url, looking_for,
+           claimed, claimed_at
     from attendees
-    where event_id = ${eventId} and claimed
-    order by claimed_at desc
+    where event_id = ${eventId}
+    order by claimed desc, claimed_at desc nulls last, id
   `;
 
   if (attendees.length === 0) {
@@ -41,25 +44,27 @@ export async function buildBackchannelFeed(eventId: number): Promise<FeedItem[]>
       const parts = [`#${a.id} ${a.name}`];
       if (a.headline) parts.push(a.headline);
       if (a.description) parts.push(a.description);
-      if (a.looking_for) parts.push(`WANTS: ${a.looking_for}`);
+      if (a.claimed && a.looking_for) parts.push(`WANTS: ${a.looking_for}`);
+      if (a.claimed) parts.push("[LIVE]");
       return parts.join(" | ");
     })
     .join("\n");
 
-  const instruction = `You are Backchannel's organizer intelligence. You are reading the room on behalf of the EVENT ORGANIZER to help them hit their agenda.
+  const instruction = `You are Backchannel's organizer intelligence. You read the full guest list on behalf of the EVENT ORGANIZER to help them prioritize who to talk to.
 
 EVENT: ${event.name}
-ORGANIZER AGENDA (treat this as the organizer's primary objective — potential customers, hires, teammates for the host team, or anyone materially useful to the agenda):
+
+ORGANIZER AGENDA (treat this as the host's primary objective — potential customers, hires, teammates for the host team, warm doors, or anyone materially useful to the agenda):
 ${event.agenda}
 
-CLAIMED ATTENDEES (ranked chronologically newest first):
+FULL ROSTER (every attendee on the guest list — those marked [LIVE] have already claimed their profile and are physically in the room; treat [LIVE] as a strong actionability bonus but still rank unclaimed attendees so the organizer can prep outreach):
 ${roster}
 
-TASK: Rank each claimed attendee by how useful they are to the organizer right now. A HIGHER score means the attendee is more actionable for the agenda — e.g. they could become a customer, they're building something adjacent, they explicitly want something the organizer offers, or they can open relevant doors.
+TASK: Score every attendee from 1 (irrelevant) to 10 (critical). A HIGHER score means the attendee is more useful to the agenda — they could become a customer, they're building something adjacent, they explicitly want something the organizer offers, or they can open relevant doors. Factor [LIVE] in as an actionability bonus (someone useful AND in the room ranks higher than someone equally useful but not yet checked in).
 
 Return VALID JSON ONLY (no markdown fences), shape:
 {"items": [{"id": <number>, "score": <1-10 int>, "why": "<ONE short sentence, specific, no filler>"}]}
-Include EVERY attendee by id. Do not invent ids. The "why" names the exact overlap between attendee and agenda — no "great fit", no "could be useful".`;
+Include EVERY attendee by id. Do not invent ids. The "why" names the exact overlap between attendee and agenda. No "great fit", no "could be useful", no filler. NEVER include the token [LIVE] or the word "LIVE" in the "why" sentence — that marker is a signal only, not output. One sentence.`;
 
   const name = `backchannel-feed-${eventId}-${now}`;
   const { reply } = await launchAgent(instruction, "Score the room.", name);
@@ -84,11 +89,12 @@ Include EVERY attendee by id. Do not invent ids. The "why" names the exact overl
       headline: a.headline,
       linkedin_url: a.linkedin_url,
       looking_for: a.looking_for,
+      claimed: a.claimed,
+      claimed_at: a.claimed_at,
       score: Math.max(1, Math.min(10, s?.score ?? 5)),
       why: s?.why ?? "",
     };
   });
-  items.sort((a, b) => b.score - a.score);
 
   cache.set(eventId, { at: now, items });
   return items;

@@ -12,7 +12,8 @@ export async function GET() {
   const org = await getOrganizer();
   if (!org) return NextResponse.json({ error: "Not logged in" }, { status: 401 });
   const [event] = await sql`
-    select id, name, luma_url, agenda, slug, agent_name, welcome_template
+    select id, name, luma_url, agenda, slug, agent_name, welcome_template,
+           organizer_suggestions
     from events where organizer_id = ${org.id} order by id desc limit 1
   `;
   return NextResponse.json(event ?? null);

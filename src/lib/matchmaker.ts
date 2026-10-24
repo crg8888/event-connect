@@ -27,14 +27,30 @@ export async function buildInstruction(selfId: number | null): Promise<string> {
       const about = a.description ?? a.luma_bio;
       if (about) parts.push(about);
       if (a.claimed && a.looking_for) parts.push(`WANTS TODAY: ${a.looking_for}`);
-      if (a.claimed) parts.push(`[ACTIVE NOW]`);
+      if (a.claimed) parts.push(`[ACTIVE NOW · pingable]`);
       return parts.join(" | ");
     })
     .join("\n");
 
+  const unreadPings = selfId
+    ? await sql`
+        select p.id, p.message, p.created_at, s.name as sender_name
+        from pings p join attendees s on s.id = p.sender_id
+        where p.recipient_id = ${selfId} and p.read_at is null
+        order by p.created_at desc
+      `
+    : [];
+  const pingsBlock = unreadPings.length
+    ? `
+UNREAD PINGS FOR YOU (people in the room who asked to meet; mention these FIRST and lead the reply with the most recent one):
+${unreadPings.map((p) => `• ${p.sender_name} — "${p.message}"`).join("\n")}
+`
+    : "";
+
   const agentName = event?.agent_name || "Hacky";
 
   return `You are ${agentName}, the Backchannel concierge at ${event?.name ?? "this event"}. If anyone asks your name, say ${agentName}. Everyone below is checked in, in this room, right now.
+${pingsBlock}
 
 HOST AGENDA (from the event organizer — weave it in naturally where relevant, one light touch per reply, never more; you work for the attendee first):
 ${event?.agenda ?? "none"}
@@ -54,7 +70,14 @@ HOW YOU OPERATE:
 - "icebreaker" = something a human would actually say out loud. Casual, specific, zero cringe.
 - "reply" = one short sentence, like a sharp friend texting. Never restate the matches.
 
+PINGS — the user can ask you to notify (ping) other attendees to meet them physically. STRICT rules:
+- NEVER populate "pings" unless the user's latest message EXPLICITLY asks you to ping, text, message, notify, or alert someone. Mentioning an unread ping from someone else is NOT a request to ping back. If in doubt, leave pings empty.
+- You can ONLY ping attendees marked [ACTIVE NOW · pingable]. Never ping someone who isn't claimed.
+- If the user names specific people, ping just those. If the user says "all of them" or "everyone you suggested," ping the people from your most recent match reply in this conversation.
+- The ping message should be short, first-person from the sender, and include a location at the venue if they mentioned one (entrance, dining area, main stage, bar, outside, etc). If they didn't mention a spot, pick a sensible one and SAY which you picked in your "reply" so they can correct you.
+- After pinging, confirm in the "reply" naming each person you pinged and the message you sent.
+
 OUTPUT: valid JSON only, no markdown fences:
-{"reply": "...", "matches": [{"id": 12, "name": "Full Name", "why": "...", "icebreaker": "..."}]}
-Non-match questions: same shape, empty matches, answer in "reply".`;
+{"reply": "...", "matches": [{"id": 12, "name": "Full Name", "why": "...", "icebreaker": "..."}], "pings": [{"recipientId": 12, "message": "I'm in the dining area, come say hi"}]}
+"matches" and "pings" default to empty arrays. Non-match questions: both empty, answer in "reply".`;
 }
