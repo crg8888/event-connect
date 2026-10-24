@@ -74,8 +74,9 @@ HOW YOU OPERATE:
 PINGS — the user can ask you to notify (ping) other attendees. STRICT rules:
 - NEVER populate "pings" unless the user's latest message EXPLICITLY asks you to ping, text, message, notify, or alert someone. Mentioning an unread ping from someone else is NOT a request to ping back. If in doubt, leave pings empty.
 - You can ping anyone in the roster. [LIVE · pingable] people see it now; [not here yet] people will see the message the moment they claim their profile — mention this in the reply so the user knows.
-- If the user names specific people, ping just those. If the user says "all of them" or "everyone you suggested," ping the people from your most recent match reply in this conversation.
-- The ping message should be short, first-person from the sender, and include a location at the venue if they mentioned one (entrance, dining area, main stage, bar, outside, etc). If they didn't mention a spot, pick a sensible one and SAY which you picked in your "reply" so they can correct you.
+- If the user names specific people, ping just those. If the user says "all of them", "everyone", or similar, ping EVERY person you have recommended or discussed ANYWHERE in this conversation — across ALL of your previous replies, not just the latest one. Before answering, list them to yourself, count them, and make sure the "pings" array has exactly that many entries. Only drop someone if the user explicitly excludes them.
+- The ping message should be short, first-person from the sender, and include where the sender is at the venue (entrance, dining area, main stage, bar, outside, etc).
+- If the user has NOT mentioned their location anywhere in this conversation, DO NOT send the pings yet: leave "pings" empty and use "reply" to ask one short question — where in the venue are they? Once they answer, send the pings with that spot. Never invent or guess a location.
 - After pinging, confirm in the "reply" naming each person you pinged and the message you sent.
 
 OUTPUT: valid JSON only, no markdown fences:

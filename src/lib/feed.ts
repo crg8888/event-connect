@@ -108,6 +108,29 @@ async function runScoring(eventId: number): Promise<FeedItem[]> {
     return [];
   }
 
+  const finderAsks = await sql`
+    select cm.attendee_id, left(cm.content->>'text', 120) as text
+    from chat_messages cm
+    join attendees a on a.id = cm.attendee_id
+    where a.event_id = ${eventId} and cm.role = 'user'
+    order by cm.id desc
+    limit 120
+  `;
+  const asksById = new Map<number, string[]>();
+  for (const r of finderAsks) {
+    const list = asksById.get(r.attendee_id) ?? [];
+    if (list.length < 4) list.push(r.text);
+    asksById.set(r.attendee_id, list);
+  }
+  const dmCounts = await sql`
+    select s.id, count(p.id)::int as sent
+    from attendees s
+    join pings p on p.sender_id = s.id
+    where s.event_id = ${eventId}
+    group by s.id
+  `;
+  const dmById = new Map<number, number>(dmCounts.map((d) => [d.id, d.sent]));
+
   const roster = attendees
     .map((a) => {
       const parts = [`#${a.id} ${a.name}`];
@@ -115,6 +138,10 @@ async function runScoring(eventId: number): Promise<FeedItem[]> {
       if (a.description) parts.push(a.description);
       if (a.claimed && a.looking_for) parts.push(`WANTS: ${a.looking_for}`);
       if (a.claimed) parts.push("[LIVE]");
+      const asks = asksById.get(a.id);
+      if (asks?.length) parts.push(`ASKING THE CONCIERGE ABOUT: ${asks.join(" · ")}`);
+      const sent = dmById.get(a.id);
+      if (sent) parts.push(`DMs SENT: ${sent}`);
       return parts.join(" | ");
     })
     .join("\n");
@@ -130,6 +157,8 @@ FULL ROSTER (every attendee on the guest list — those marked [LIVE] have alrea
 ${roster}
 
 TASK: Score every attendee from 1 (irrelevant) to 10 (critical). A HIGHER score means the attendee is more useful to the agenda — they could become a customer, they're building something adjacent, they explicitly want something the organizer offers, or they can open relevant doors. Factor [LIVE] in as an actionability bonus (someone useful AND in the room ranks higher than someone equally useful but not yet checked in).
+
+LEAD QUALIFICATION SIGNAL: "ASKING THE CONCIERGE ABOUT" and "DMs SENT" show live, in-the-room intent — someone actively asking for intros that match the agenda is a warm lead and should score HIGHER than an equally relevant but passive attendee. Treat this chat data as PRIVATE INPUT ONLY: the "why" sentence must NEVER quote, paraphrase, or reference anything from their private chats or DMs — build the "why" from public profile + WANTS only.
 
 Return VALID JSON ONLY (no markdown fences), shape:
 {"items": [{"id": <number>, "score": <1-10 int>, "why": "<ONE short sentence, specific, no filler>"}]}
