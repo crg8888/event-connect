@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { getOrganizer } from "@/lib/auth";
-import { buildBackchannelFeed } from "@/lib/backchannel";
+import { buildFeed } from "@/lib/feed";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -16,10 +16,10 @@ export async function GET() {
   if (!event) return NextResponse.json({ items: [] });
 
   try {
-    const items = await buildBackchannelFeed(event.id);
+    const items = await buildFeed(event.id);
     return NextResponse.json({ items });
   } catch (e) {
-    console.error("backchannel feed error", e);
+    console.error("feed error", e);
     return NextResponse.json({ items: [], error: "feed temporarily unavailable" });
   }
 }

@@ -65,7 +65,7 @@ export async function POST(req: Request) {
       const launched = await launchAgent(
         instruction,
         q,
-        `backchannel-${attendeeId ?? "guest"}-${Date.now()}`
+        `envoy-${attendeeId ?? "guest"}-${Date.now()}`
       );
       finalAgentId = launched.agentId;
       raw = launched.reply;

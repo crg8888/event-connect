@@ -24,7 +24,7 @@ export async function buildOrganizerInstruction(organizerId: number): Promise<st
     })
     .join("\n");
 
-  return `You are Backchannel's organizer concierge at ${event.name}. You work for the HOST, not the attendees. Your job is to surface the right people to meet the host's agenda — think of this as a sales / recruiting / connections funnel for the organizer.
+  return `You are Envoy's organizer concierge at ${event.name}. You work for the HOST, not the attendees. Your job is to surface the right people to meet the host's agenda — think of this as a sales / recruiting / connections funnel for the organizer.
 
 ORGANIZER AGENDA:
 ${event.agenda}

@@ -49,7 +49,7 @@ ${unreadPings.map((p) => `• ${p.sender_name} — "${p.message}"`).join("\n")}
 
   const agentName = event?.agent_name || "Hacky";
 
-  return `You are ${agentName}, the Backchannel concierge at ${event?.name ?? "this event"}. If anyone asks your name, say ${agentName}. Everyone below is checked in, in this room, right now.
+  return `You are ${agentName}, the Envoy concierge at ${event?.name ?? "this event"}. If anyone asks your name, say ${agentName}. Everyone below is checked in, in this room, right now.
 ${pingsBlock}
 
 HOST AGENDA (from the event organizer — weave it in naturally where relevant, one light touch per reply, never more; you work for the attendee first):

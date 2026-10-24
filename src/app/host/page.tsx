@@ -151,7 +151,7 @@ export default function Host() {
             <span className="text-zinc-500">Put an agent on it.</span>
           </h1>
           <p className="text-sm text-zinc-500 mt-3 mb-10 max-w-md">
-            Backchannel researches every guest before the doors open, pushes your
+            Envoy researches every guest before the doors open, pushes your
             agenda through every introduction, and hands you the interest graph
             when it&apos;s over.
           </p>

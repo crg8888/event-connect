@@ -16,7 +16,7 @@ type FeedItem = {
 const cache = new Map<number, { at: number; items: FeedItem[] }>();
 const TTL = 30_000;
 
-export async function buildBackchannelFeed(eventId: number): Promise<FeedItem[]> {
+export async function buildFeed(eventId: number): Promise<FeedItem[]> {
   const now = Date.now();
   const cached = cache.get(eventId);
   if (cached && now - cached.at < TTL) return cached.items;
@@ -50,7 +50,7 @@ export async function buildBackchannelFeed(eventId: number): Promise<FeedItem[]>
     })
     .join("\n");
 
-  const instruction = `You are Backchannel's organizer intelligence. You read the full guest list on behalf of the EVENT ORGANIZER to help them prioritize who to talk to.
+  const instruction = `You are Envoy's organizer intelligence. You read the full guest list on behalf of the EVENT ORGANIZER to help them prioritize who to talk to.
 
 EVENT: ${event.name}
 
@@ -66,7 +66,7 @@ Return VALID JSON ONLY (no markdown fences), shape:
 {"items": [{"id": <number>, "score": <1-10 int>, "why": "<ONE short sentence, specific, no filler>"}]}
 Include EVERY attendee by id. Do not invent ids. The "why" names the exact overlap between attendee and agenda. No "great fit", no "could be useful", no filler. NEVER include the token [LIVE] or the word "LIVE" in the "why" sentence — that marker is a signal only, not output. One sentence.`;
 
-  const name = `backchannel-feed-${eventId}-${now}`;
+  const name = `envoy-feed-${eventId}-${now}`;
   const { reply } = await launchAgent(instruction, "Score the room.", name);
 
   let scored: { id: number; score: number; why: string }[] = [];
@@ -100,6 +100,6 @@ Include EVERY attendee by id. Do not invent ids. The "why" names the exact overl
   return items;
 }
 
-export function invalidateBackchannelCache(eventId: number) {
+export function invalidateFeedCache(eventId: number) {
   cache.delete(eventId);
 }

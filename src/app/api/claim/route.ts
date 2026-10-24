@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
-import { invalidateBackchannelCache } from "@/lib/backchannel";
+import { invalidateFeedCache } from "@/lib/feed";
 
 export async function POST(req: Request) {
   const { attendeeId, email, lookingFor } = await req.json();
@@ -34,6 +34,6 @@ export async function POST(req: Request) {
     where id = ${attendeeId}
     returning id, name, looking_for, event_id
   `;
-  if (claimed?.event_id) invalidateBackchannelCache(claimed.event_id);
+  if (claimed?.event_id) invalidateFeedCache(claimed.event_id);
   return NextResponse.json(claimed);
 }

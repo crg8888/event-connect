@@ -10,7 +10,7 @@ const geistSans = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Backchannel",
+  title: "Envoy",
   description: "Make the room work.",
 };
 

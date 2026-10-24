@@ -38,7 +38,7 @@ export async function POST(req: Request) {
     const { agentId: newId, reply: raw } = await launchAgent(
       instruction,
       question,
-      `backchannel-organizer-${org.id}-${Date.now()}`
+      `envoy-organizer-${org.id}-${Date.now()}`
     );
     return NextResponse.json({ agentId: newId, ...parseReply(raw) });
   } catch (e) {

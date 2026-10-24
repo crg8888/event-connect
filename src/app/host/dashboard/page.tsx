@@ -100,7 +100,7 @@ export default function HostDashboard() {
             setInterests(d.interests);
           });
       const loadFeed = () =>
-        fetch("/api/host/backchannel")
+        fetch("/api/host/feed")
           .then((r) => r.json())
           .then((d) => {
             setFeed(d.items ?? []);
@@ -127,7 +127,7 @@ export default function HostDashboard() {
     router.replace("/login");
   }
 
-  async function askBackchannel(q: string) {
+  async function askEnvoy(q: string) {
     if (!q.trim() || chatBusy) return;
     setChatInput("");
     setChatMsgs((m) => [...m, { role: "user", text: q }]);
@@ -199,7 +199,7 @@ export default function HostDashboard() {
         <section className="flex flex-col overflow-hidden border-r border-zinc-900/80">
           <div className="px-6 py-4 border-b border-zinc-900/60">
             <h2 className="text-[11px] uppercase tracking-widest text-zinc-500">
-              Ask Backchannel
+              Ask Envoy
             </h2>
             <p className="text-xs text-zinc-600 mt-0.5">
               The concierge for the host — ranked for your agenda.
@@ -225,7 +225,7 @@ export default function HostDashboard() {
                   {suggestions.map((s) => (
                     <button
                       key={s}
-                      onClick={() => askBackchannel(s)}
+                      onClick={() => askEnvoy(s)}
                       className="block w-full text-left bg-zinc-900/40 border border-zinc-800/60 rounded-xl px-4 py-3 text-sm text-zinc-300 hover:border-lime-300/50"
                     >
                       {s}
@@ -289,7 +289,7 @@ export default function HostDashboard() {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              askBackchannel(chatInput);
+              askEnvoy(chatInput);
             }}
             className="px-6 py-4 border-t border-zinc-900/80 bg-black"
           >
