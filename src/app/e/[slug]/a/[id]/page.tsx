@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import Wordmark from "@/components/Wordmark";
 import { Identity, resolveIdentity } from "@/lib/identity";
 
@@ -35,6 +35,7 @@ function fillTemplate(template: string, firstName: string) {
 
 function ChatInner() {
   const params = useSearchParams();
+  const { slug: eventSlug } = useParams<{ slug: string; id: string }>();
   const [me, setMe] = useState<Identity | null>(null);
   const [agentName, setAgentName] = useState("Hacky");
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -75,23 +76,7 @@ function ChatInner() {
 
   function bootstrap(id: Identity | null) {
     setMe(id);
-    const slug = id?.event ?? new URLSearchParams(window.location.search).get("e");
-
-    if (id) {
-      const url = new URL(window.location.href);
-      let changed = false;
-      if (url.searchParams.get("a") !== String(id.id)) {
-        url.searchParams.set("a", String(id.id));
-        changed = true;
-      }
-      if (id.event && url.searchParams.get("e") !== id.event) {
-        url.searchParams.set("e", id.event);
-        changed = true;
-      }
-      if (changed) {
-        window.history.replaceState(null, "", url.toString());
-      }
-    }
+    const slug = eventSlug ?? id?.event;
 
     fetch(`/api/attendees${slug ? `?e=${encodeURIComponent(slug)}` : ""}`)
       .then((r) => r.json())
@@ -323,7 +308,7 @@ function ChatInner() {
             </span>
           ) : (
             <Link
-              href="/claim"
+              href={eventSlug ? `/e/${eventSlug}/claim` : "/login"}
               className="text-[11px] uppercase tracking-widest text-lime-300"
             >
               claim profile

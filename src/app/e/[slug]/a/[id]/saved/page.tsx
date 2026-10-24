@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import PersonCard, { Person } from "@/components/PersonCard";
 import Wordmark from "@/components/Wordmark";
 import { Identity, resolveIdentity } from "@/lib/identity";
 
 export default function Saved() {
+  const { slug: eventSlug } = useParams<{ slug: string; id: string }>();
   const [me, setMe] = useState<Identity | null>(null);
   const [people, setPeople] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
@@ -18,12 +20,6 @@ export default function Saved() {
       if (!id) {
         setLoading(false);
         return;
-      }
-      const url = new URL(window.location.href);
-      if (url.searchParams.get("a") !== String(id.id)) {
-        url.searchParams.set("a", String(id.id));
-        if (id.event) url.searchParams.set("e", id.event);
-        window.history.replaceState(null, "", url.toString());
       }
       fetch(`/api/saves?ownerId=${id.id}`)
         .then((r) => r.json())
@@ -51,19 +47,19 @@ export default function Saved() {
         </span>
       </header>
 
-      {!me && (
+      {!me && eventSlug && (
         <Link
-          href="/claim"
+          href={`/e/${eventSlug}/claim`}
           className="block bg-lime-300 text-black font-semibold rounded-xl px-4 py-3.5 text-center text-sm"
         >
           Claim your profile first
         </Link>
       )}
       {loading && me && <p className="text-zinc-600 text-sm">Loading…</p>}
-      {me && !loading && people.length === 0 && (
+      {me && eventSlug && !loading && people.length === 0 && (
         <p className="text-zinc-500 text-sm">
           Empty. Ask the{" "}
-          <Link href="/chat" className="text-lime-300 underline">
+          <Link href={`/e/${eventSlug}/a/${me.id}`} className="text-lime-300 underline">
             concierge
           </Link>{" "}
           who&apos;s worth your time.

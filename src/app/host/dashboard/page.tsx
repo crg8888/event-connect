@@ -184,13 +184,15 @@ export default function HostDashboard() {
           >
             Log out
           </button>
-          <Link
-            href="/qr"
-            className="bg-lime-300 text-black font-semibold rounded-xl px-5 py-2 text-sm"
-            target="_blank"
-          >
-            Present QR
-          </Link>
+          {event?.slug && (
+            <Link
+              href={`/e/${event.slug}/qr`}
+              className="bg-lime-300 text-black font-semibold rounded-xl px-5 py-2 text-sm"
+              target="_blank"
+            >
+              Present QR
+            </Link>
+          )}
         </div>
       </header>
 

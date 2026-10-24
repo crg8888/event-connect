@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import Wordmark from "@/components/Wordmark";
 import { Identity, resolveIdentity } from "@/lib/identity";
 
@@ -28,6 +29,7 @@ function timeAgo(iso: string) {
 }
 
 export default function Notifications() {
+  const { slug: eventSlug } = useParams<{ slug: string; id: string }>();
   const [me, setMe] = useState<Identity | null>(null);
   const [pings, setPings] = useState<Ping[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,12 +42,6 @@ export default function Notifications() {
       if (!id) {
         setLoading(false);
         return;
-      }
-      const url = new URL(window.location.href);
-      if (url.searchParams.get("a") !== String(id.id)) {
-        url.searchParams.set("a", String(id.id));
-        if (id.event) url.searchParams.set("e", id.event);
-        window.history.replaceState(null, "", url.toString());
       }
       const load = async () => {
         const d = await fetch(`/api/pings/mine?id=${id.id}`).then((r) => r.json());
@@ -81,9 +77,9 @@ export default function Notifications() {
         )}
       </header>
 
-      {!me ? (
+      {!me && eventSlug ? (
         <p className="text-sm text-zinc-500">
-          <Link href="/claim" className="text-lime-300">
+          <Link href={`/e/${eventSlug}/claim`} className="text-lime-300">
             Claim your profile
           </Link>{" "}
           to receive pings.

@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { identityQuery, resolveIdentity } from "@/lib/identity";
+import { resolveIdentity } from "@/lib/identity";
 
 export default function Landing() {
   const router = useRouter();
@@ -11,10 +11,10 @@ export default function Landing() {
       const me = await resolveIdentity();
       const slug =
         new URLSearchParams(window.location.search).get("e") ?? me?.event;
-      if (me) {
-        router.replace(`/chat${identityQuery(me)}`);
+      if (me && me.event) {
+        router.replace(`/e/${me.event}/a/${me.id}`);
       } else if (slug) {
-        router.replace(`/claim?e=${encodeURIComponent(slug)}`);
+        router.replace(`/e/${slug}/claim`);
       } else {
         router.replace("/login");
       }

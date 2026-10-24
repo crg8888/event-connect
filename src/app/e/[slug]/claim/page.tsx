@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Person } from "@/components/PersonCard";
 import Wordmark from "@/components/Wordmark";
 import { getIdentity, setIdentity } from "@/lib/identity";
 
 export default function Claim() {
   const router = useRouter();
+  const { slug: eventSlug } = useParams<{ slug: string }>();
   const [people, setPeople] = useState<Person[]>([]);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Person | null>(null);
@@ -15,17 +16,12 @@ export default function Claim() {
   const [lookingFor, setLookingFor] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [eventSlug, setEventSlug] = useState<string | undefined>(undefined);
   const [guestMode, setGuestMode] = useState(false);
   const [guestName, setGuestName] = useState("");
 
   useEffect(() => {
-    const slug =
-      new URLSearchParams(window.location.search).get("e") ??
-      getIdentity()?.event ??
-      undefined;
-    setEventSlug(slug);
-    fetch(`/api/attendees${slug ? `?e=${encodeURIComponent(slug)}` : ""}`)
+    if (!eventSlug) return;
+    fetch(`/api/attendees?e=${encodeURIComponent(String(eventSlug))}`)
       .then((r) => r.json())
       .then((data: Person[]) => {
         setPeople(data);
@@ -38,7 +34,7 @@ export default function Claim() {
           }
         }
       });
-  }, []);
+  }, [eventSlug]);
 
   const filtered = people.filter((p) =>
     p.name.toLowerCase().includes(query.toLowerCase())
@@ -59,15 +55,10 @@ export default function Claim() {
     });
     if (res.ok) {
       setIdentity(selected.id, selected.name, eventSlug);
-      // eager-warm suggestions so the chat page sees them stored on first load
       try {
         fetch(`/api/suggestions/mine?id=${selected.id}`, { keepalive: true });
       } catch {}
-      const q = new URLSearchParams();
-      if (eventSlug) q.set("e", eventSlug);
-      q.set("a", String(selected.id));
-      q.set("welcome", "1");
-      router.push(`/chat?${q.toString()}`);
+      router.push(`/e/${eventSlug}/a/${selected.id}?welcome=1`);
     } else {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "Could not claim this profile.");
@@ -95,11 +86,7 @@ export default function Claim() {
       try {
         fetch(`/api/suggestions/mine?id=${data.id}`, { keepalive: true });
       } catch {}
-      const q = new URLSearchParams();
-      if (eventSlug) q.set("e", eventSlug);
-      q.set("a", String(data.id));
-      q.set("welcome", "1");
-      router.push(`/chat?${q.toString()}`);
+      router.push(`/e/${eventSlug}/a/${data.id}?welcome=1`);
     } else {
       const data = await res.json().catch(() => ({}));
       setError(data.error ?? "Could not join as guest.");
