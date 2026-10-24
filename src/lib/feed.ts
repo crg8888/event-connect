@@ -11,6 +11,7 @@ type FeedItem = {
   claimed_at: string | null;
   score: number;
   why: string;
+  intros: number;
 };
 
 const SCORE_TTL = 45_000;
@@ -18,11 +19,17 @@ const inflight = new Map<number, Promise<FeedItem[]>>();
 
 async function fetchItems(eventId: number): Promise<FeedItem[]> {
   const rows = await sql`
-    select id, name, headline, linkedin_url, looking_for,
-           claimed, claimed_at, feed_score, feed_why
-    from attendees
-    where event_id = ${eventId}
-    order by claimed desc, claimed_at desc nulls last, id
+    select a.id, a.name, a.headline, a.linkedin_url, a.looking_for,
+           a.claimed, a.claimed_at, a.feed_score, a.feed_why,
+           coalesce(i.intros, 0)::int as intros
+    from attendees a
+    left join (
+      select sender_id, count(distinct recipient_id) as intros
+      from pings
+      group by sender_id
+    ) i on i.sender_id = a.id
+    where a.event_id = ${eventId}
+    order by a.claimed desc, a.claimed_at desc nulls last, a.id
   `;
   return rows.map((a) => ({
     id: a.id,
@@ -34,6 +41,7 @@ async function fetchItems(eventId: number): Promise<FeedItem[]> {
     claimed_at: a.claimed_at,
     score: a.feed_score ?? 0,
     why: a.feed_why ?? "",
+    intros: a.intros,
   }));
 }
 
@@ -184,6 +192,7 @@ Include EVERY attendee by id. Do not invent ids. The "why" names the exact overl
       claimed_at: a.claimed_at,
       score: Math.max(1, Math.min(10, s?.score ?? 5)),
       why: s?.why ?? "",
+      intros: dmById.get(a.id) ?? 0,
     };
   });
 

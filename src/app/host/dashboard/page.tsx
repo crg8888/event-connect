@@ -15,8 +15,9 @@ type FeedItem = {
   claimed_at: string | null;
   score: number;
   why: string;
+  intros: number;
 };
-type SortMode = "relevance" | "recency";
+type SortMode = "relevance" | "recency" | "intros";
 type Interest = {
   created_at: string;
   owner_name: string;
@@ -64,6 +65,13 @@ export default function HostDashboard() {
         (a, b) =>
           b.score - a.score ||
           Number(b.claimed) - Number(a.claimed) ||
+          a.name.localeCompare(b.name)
+      );
+    } else if (sortMode === "intros") {
+      items.sort(
+        (a, b) =>
+          b.intros - a.intros ||
+          b.score - a.score ||
           a.name.localeCompare(b.name)
       );
     } else {
@@ -346,7 +354,7 @@ export default function HostDashboard() {
               The whole room · reordered as people check in
             </p>
             <div className="inline-flex bg-zinc-900/60 border border-zinc-800/60 rounded-full p-0.5 text-[10px] uppercase tracking-widest">
-              {(["relevance", "recency"] as SortMode[]).map((m) => (
+              {(["relevance", "recency", "intros"] as SortMode[]).map((m) => (
                 <button
                   key={m}
                   onClick={() => setSortMode(m)}
@@ -412,16 +420,23 @@ export default function HostDashboard() {
                       </span>
                     )}
                   </div>
-                  {f.linkedin_url && (
-                    <a
-                      href={f.linkedin_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="text-[10px] uppercase tracking-wider text-zinc-500 hover:text-lime-300 shrink-0"
-                    >
-                      LinkedIn
-                    </a>
-                  )}
+                  <div className="flex items-center gap-2 shrink-0">
+                    {f.intros > 0 && (
+                      <span className="text-[9px] uppercase tracking-widest text-lime-300/80 border border-lime-300/30 rounded-full px-2 py-0.5">
+                        {f.intros} intro{f.intros === 1 ? "" : "s"}
+                      </span>
+                    )}
+                    {f.linkedin_url && (
+                      <a
+                        href={f.linkedin_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-[10px] uppercase tracking-wider text-zinc-500 hover:text-lime-300"
+                      >
+                        LinkedIn
+                      </a>
+                    )}
+                  </div>
                 </div>
                 {f.headline && (
                   <p
