@@ -210,13 +210,10 @@ export default function HostDashboard() {
 
           <div className="flex-1 overflow-y-auto px-6 py-5">
             {chatMsgs.length === 0 && !chatBusy && (() => {
-              const suggestions =
-                event?.organizer_suggestions && event.organizer_suggestions.length
-                  ? event.organizer_suggestions
-                  : FALLBACK_SUGGESTIONS;
-              const tailored = Boolean(
-                event?.organizer_suggestions && event.organizer_suggestions.length
-              );
+              const raw = event?.organizer_suggestions;
+              const list = Array.isArray(raw) ? raw : [];
+              const suggestions = list.length ? list : FALLBACK_SUGGESTIONS;
+              const tailored = list.length > 0;
               return (
                 <div className="space-y-2 max-w-xl">
                   <p className="text-sm text-zinc-500 mb-3">

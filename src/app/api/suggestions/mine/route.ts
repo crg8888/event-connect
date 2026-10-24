@@ -19,8 +19,16 @@ export async function GET(req: Request) {
   `;
   if (!attendee) return NextResponse.json({ error: "not found" }, { status: 404 });
 
-  if (Array.isArray(attendee.chat_suggestions) && attendee.chat_suggestions.length) {
-    return NextResponse.json({ suggestions: attendee.chat_suggestions });
+  let existing = attendee.chat_suggestions;
+  if (typeof existing === "string") {
+    try {
+      existing = JSON.parse(existing);
+    } catch {
+      existing = null;
+    }
+  }
+  if (Array.isArray(existing) && existing.length) {
+    return NextResponse.json({ suggestions: existing });
   }
 
   try {

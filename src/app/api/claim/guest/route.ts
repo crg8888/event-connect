@@ -20,13 +20,8 @@ export async function POST(req: Request) {
     select id, claimed from attendees where lower(email) = ${cleanEmail}
   `;
   if (existing.length) {
+    // email already on the roster — treat as re-login (updates purpose, keeps claim)
     const row = existing[0];
-    if (row.claimed) {
-      return NextResponse.json(
-        { error: "That email is already in the room. Use the claim flow instead." },
-        { status: 409 }
-      );
-    }
     const [updated] = await sql`
       update attendees set
         claimed = true,

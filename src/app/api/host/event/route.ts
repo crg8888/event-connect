@@ -16,6 +16,13 @@ export async function GET() {
            organizer_suggestions
     from events where organizer_id = ${org.id} order by id desc limit 1
   `;
+  if (event && typeof event.organizer_suggestions === "string") {
+    try {
+      event.organizer_suggestions = JSON.parse(event.organizer_suggestions);
+    } catch {
+      event.organizer_suggestions = null;
+    }
+  }
   return NextResponse.json(event ?? null);
 }
 
