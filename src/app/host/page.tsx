@@ -63,11 +63,12 @@ export default function Host() {
   const [guests, setGuests] = useState<Guest[]>([]);
   const [csvName, setCsvName] = useState("");
 
-  const [phase, setPhase] = useState<"form" | "enriching" | "done">("form");
+  const [phase, setPhase] = useState<"luma" | "scanning" | "form" | "enriching" | "done">("luma");
   const [enriched, setEnriched] = useState<Enriched[]>([]);
   const [progress, setProgress] = useState(0);
   const [linkedinCount, setLinkedinCount] = useState(0);
   const [checking, setChecking] = useState(true);
+  const [scanError, setScanError] = useState("");
 
   useEffect(() => {
     (async () => {
@@ -86,6 +87,35 @@ export default function Host() {
       setConnecting(false);
       setConnected(true);
     }, 1800);
+  }
+
+  async function scanLuma() {
+    if (!lumaUrl.trim()) return;
+    setScanError("");
+    setPhase("scanning");
+    try {
+      const res = await fetch("/api/host/luma-scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lumaUrl: lumaUrl.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setScanError(data.error ?? "Could not read that Luma page.");
+        setPhase("luma");
+        return;
+      }
+      if (data.name) setEventName(data.name);
+      if (data.description) setAgenda(data.description);
+      setPhase("form");
+    } catch {
+      setScanError("Luma didn't respond. Enter the details manually.");
+      setPhase("luma");
+    }
+  }
+
+  function skipLuma() {
+    setPhase("form");
   }
 
   async function onCsv(file: File) {
@@ -143,34 +173,102 @@ export default function Host() {
 
       {checking && <p className="text-sm text-zinc-600">Loading…</p>}
 
+      {!checking && phase === "luma" && (
+        <>
+          <h1 className="text-3xl font-semibold tracking-tight leading-tight">
+            Point us at your event.
+            <br />
+            <span className="text-zinc-500">We&apos;ll read it in.</span>
+          </h1>
+          <p className="text-sm text-zinc-500 mt-3 mb-10 max-w-md">
+            Drop your Luma link. Our research agent pulls the name, agenda, and
+            location so you&apos;re not retyping any of it.
+          </p>
+
+          <input
+            value={lumaUrl}
+            onChange={(e) => setLumaUrl(e.target.value)}
+            placeholder="https://luma.com/..."
+            autoFocus
+            className="w-full bg-zinc-900/60 border border-zinc-800/60 rounded-xl px-4 py-3.5 text-sm outline-none focus:border-lime-300/50 placeholder:text-zinc-600 mb-3"
+          />
+          {scanError && (
+            <p className="text-xs text-red-400 mb-3">{scanError}</p>
+          )}
+          <div className="flex gap-3">
+            <button
+              onClick={scanLuma}
+              disabled={!lumaUrl.trim()}
+              className="flex-1 bg-lime-300 disabled:opacity-30 text-black font-semibold rounded-xl py-3.5 text-sm"
+            >
+              Scan event
+            </button>
+            <button
+              onClick={skipLuma}
+              className="text-[11px] uppercase tracking-widest text-zinc-500 hover:text-zinc-300 px-4"
+            >
+              Enter manually
+            </button>
+          </div>
+        </>
+      )}
+
+      {!checking && phase === "scanning" && (
+        <section className="pt-10">
+          <p className="text-[11px] uppercase tracking-widest text-zinc-500 mb-3">
+            Reading your Luma event
+          </p>
+          <div className="space-y-2 font-mono text-[13px] text-zinc-400">
+            <p className="animate-pulse">→ fetching page…</p>
+            <p className="animate-pulse" style={{ animationDelay: "0.3s" }}>
+              → extracting agenda…
+            </p>
+            <p className="animate-pulse" style={{ animationDelay: "0.6s" }}>
+              → tagging location…
+            </p>
+          </div>
+        </section>
+      )}
+
       {!checking && phase === "form" && (
         <>
           <h1 className="text-3xl font-semibold tracking-tight leading-tight">
-            Your guest list is an asset.
+            {lumaUrl.trim() ? "Confirm what we read." : "Your event."}
             <br />
-            <span className="text-zinc-500">Put an agent on it.</span>
+            <span className="text-zinc-500">
+              {lumaUrl.trim()
+                ? "Tweak anything that's off."
+                : "Fill in the essentials."}
+            </span>
           </h1>
-          <p className="text-sm text-zinc-500 mt-3 mb-10 max-w-md">
-            Envoy researches every guest before the doors open, pushes your
-            agenda through every introduction, and hands you the interest graph
-            when it&apos;s over.
-          </p>
+          {lumaUrl.trim() && (
+            <p className="text-xs text-lime-300/80 mt-3 mb-8">
+              ✓ Scanned {new URL(lumaUrl).hostname}{" "}
+              <button
+                onClick={() => setPhase("luma")}
+                className="text-zinc-500 underline ml-1"
+              >
+                change
+              </button>
+            </p>
+          )}
+          {!lumaUrl.trim() && (
+            <p className="text-sm text-zinc-500 mt-3 mb-10 max-w-md">
+              Envoy researches every guest before the doors open, pushes your
+              agenda through every introduction, and hands you the interest
+              graph when it&apos;s over.
+            </p>
+          )}
 
           <section className="space-y-8">
             <div>
               <label className="block text-[11px] uppercase tracking-widest text-zinc-500 mb-2">
-                01 — Event
+                01 — Event name
               </label>
               <input
                 value={eventName}
                 onChange={(e) => setEventName(e.target.value)}
                 placeholder="Event name"
-                className="w-full bg-zinc-900/60 border border-zinc-800/60 rounded-xl px-4 py-3 text-sm outline-none focus:border-lime-300/50 placeholder:text-zinc-600 mb-2"
-              />
-              <input
-                value={lumaUrl}
-                onChange={(e) => setLumaUrl(e.target.value)}
-                placeholder="Luma event link (optional)"
                 className="w-full bg-zinc-900/60 border border-zinc-800/60 rounded-xl px-4 py-3 text-sm outline-none focus:border-lime-300/50 placeholder:text-zinc-600"
               />
             </div>
