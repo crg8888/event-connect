@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { invalidateBackchannelCache } from "@/lib/backchannel";
 
 export async function POST(req: Request) {
   const { attendeeId, email, lookingFor } = await req.json();
@@ -31,7 +32,8 @@ export async function POST(req: Request) {
     update attendees
     set claimed = true, looking_for = ${lookingFor.slice(0, 300)}, claimed_at = now()
     where id = ${attendeeId}
-    returning id, name, looking_for
+    returning id, name, looking_for, event_id
   `;
+  if (claimed?.event_id) invalidateBackchannelCache(claimed.event_id);
   return NextResponse.json(claimed);
 }

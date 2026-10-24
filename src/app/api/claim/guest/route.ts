@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
+import { invalidateBackchannelCache } from "@/lib/backchannel";
 
 export async function POST(req: Request) {
   const { name, email, eventSlug, lookingFor } = await req.json();
@@ -35,6 +36,7 @@ export async function POST(req: Request) {
       where id = ${row.id}
       returning id, name
     `;
+    invalidateBackchannelCache(event.id);
     return NextResponse.json(updated);
   }
 
@@ -51,5 +53,6 @@ export async function POST(req: Request) {
     )
     returning id, name
   `;
+  invalidateBackchannelCache(event.id);
   return NextResponse.json(row);
 }
