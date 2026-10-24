@@ -99,13 +99,17 @@ export default function HostDashboard() {
             setJoined(d.claimed.length);
             setInterests(d.interests);
           });
-      const loadFeed = () =>
-        fetch("/api/host/feed")
-          .then((r) => r.json())
-          .then((d) => {
-            setFeed(d.items ?? []);
-            setFeedLoading(false);
-          });
+      const loadFeed = async () => {
+        const d = await fetch("/api/host/feed").then((r) => r.json());
+        setFeed(d.items ?? []);
+        setFeedLoading(false);
+        if (!d.scored && (d.items ?? []).length > 0) {
+          fetch("/api/host/feed/score", { method: "POST" })
+            .then(() => fetch("/api/host/feed").then((r) => r.json()))
+            .then((d2) => setFeed(d2.items ?? []))
+            .catch(() => {});
+        }
+      };
 
       loadLeads();
       loadFeed();
@@ -199,13 +203,22 @@ export default function HostDashboard() {
       <div className="flex-1 grid lg:grid-cols-[1fr_380px] overflow-hidden">
         {/* MAIN: chat */}
         <section className="flex flex-col overflow-hidden border-r border-zinc-900/80">
-          <div className="px-6 py-4 border-b border-zinc-900/60">
-            <h2 className="text-[11px] uppercase tracking-widest text-zinc-500">
-              Ask Envoy
-            </h2>
-            <p className="text-xs text-zinc-600 mt-0.5">
-              The concierge for the host — ranked for your agenda.
-            </p>
+          <div className="px-6 py-3 border-b border-zinc-900/60 flex items-center justify-end">
+            {event?.slug && (
+              <Link
+                href={`/e/${event.slug}/qr`}
+                target="_blank"
+                className="inline-flex items-center gap-2 text-[11px] uppercase tracking-widest text-zinc-500 hover:text-lime-300"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-4 h-4">
+                  <rect x="3" y="3" width="7" height="7" rx="1" />
+                  <rect x="14" y="3" width="7" height="7" rx="1" />
+                  <rect x="3" y="14" width="7" height="7" rx="1" />
+                  <path d="M14 14h3M20 14v3M14 20h3M20 17v4" strokeLinecap="round" />
+                </svg>
+                Project the QR
+              </Link>
+            )}
           </div>
 
           <div className="flex-1 overflow-y-auto px-6 py-5">

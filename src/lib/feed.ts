@@ -13,14 +13,83 @@ type FeedItem = {
   why: string;
 };
 
-const cache = new Map<number, { at: number; items: FeedItem[] }>();
+type CacheEntry = {
+  at: number;
+  items: FeedItem[];
+  scored: boolean;
+  scoringPromise?: Promise<FeedItem[]>;
+};
+const cache = new Map<number, CacheEntry>();
 const TTL = 30_000;
 
-export async function buildFeed(eventId: number): Promise<FeedItem[]> {
+async function fetchItems(eventId: number): Promise<FeedItem[]> {
+  const rows = await sql`
+    select id, name, headline, description, linkedin_url, looking_for,
+           claimed, claimed_at
+    from attendees
+    where event_id = ${eventId}
+    order by claimed desc, claimed_at desc nulls last, id
+  `;
+  return rows.map((a) => ({
+    id: a.id,
+    name: a.name,
+    headline: a.headline,
+    linkedin_url: a.linkedin_url,
+    looking_for: a.looking_for,
+    claimed: a.claimed,
+    claimed_at: a.claimed_at,
+    score: 0,
+    why: "",
+  }));
+}
+
+export async function getFeed(eventId: number): Promise<{
+  items: FeedItem[];
+  scored: boolean;
+}> {
   const now = Date.now();
   const cached = cache.get(eventId);
-  if (cached && now - cached.at < TTL) return cached.items;
+  if (cached && now - cached.at < TTL) {
+    return { items: cached.items, scored: cached.scored };
+  }
 
+  const items = await fetchItems(eventId);
+  const scored = cached?.scored ?? false;
+  const nextItems =
+    cached?.scored && cached.items.length === items.length
+      ? items.map((it) => {
+          const prev = cached.items.find((p) => p.id === it.id);
+          return prev
+            ? { ...it, score: prev.score, why: prev.why }
+            : it;
+        })
+      : items;
+  cache.set(eventId, {
+    at: now,
+    items: nextItems,
+    scored,
+    scoringPromise: cached?.scoringPromise,
+  });
+  return { items: nextItems, scored };
+}
+
+export async function scoreFeed(eventId: number): Promise<FeedItem[]> {
+  const existing = cache.get(eventId);
+  if (existing?.scoringPromise) return existing.scoringPromise;
+  if (existing?.scored && Date.now() - existing.at < TTL) return existing.items;
+
+  const promise = runScoring(eventId);
+  cache.set(eventId, {
+    at: existing?.at ?? Date.now(),
+    items: existing?.items ?? [],
+    scored: false,
+    scoringPromise: promise,
+  });
+  return promise;
+}
+
+async function runScoring(eventId: number): Promise<FeedItem[]> {
+  const now = Date.now();
   const [event] = await sql`
     select id, name, agenda from events where id = ${eventId}
   `;
@@ -35,7 +104,7 @@ export async function buildFeed(eventId: number): Promise<FeedItem[]> {
   `;
 
   if (attendees.length === 0) {
-    cache.set(eventId, { at: now, items: [] });
+    cache.set(eventId, { at: now, items: [], scored: true });
     return [];
   }
 
@@ -96,7 +165,7 @@ Include EVERY attendee by id. Do not invent ids. The "why" names the exact overl
     };
   });
 
-  cache.set(eventId, { at: now, items });
+  cache.set(eventId, { at: now, items, scored: true });
   return items;
 }
 
