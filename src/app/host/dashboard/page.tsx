@@ -197,7 +197,10 @@ export default function HostDashboard() {
               <span className="text-lime-300 font-semibold">{joined}</span> joined
             </span>
             <span>
-              <span className="text-zinc-200 font-semibold">{interests.length}</span> intros
+              <span className="text-zinc-200 font-semibold">
+                {feed.filter((f) => f.intros > 0).length}
+              </span>{" "}
+              intros
             </span>
           </div>
         </div>
