@@ -18,6 +18,7 @@ export default function Claim() {
   const [error, setError] = useState("");
   const [guestMode, setGuestMode] = useState(false);
   const [guestName, setGuestName] = useState("");
+  const [guestLinkedin, setGuestLinkedin] = useState("");
 
   useEffect(() => {
     if (!eventSlug) return;
@@ -57,6 +58,12 @@ export default function Claim() {
       setIdentity(selected.id, selected.name, eventSlug);
       try {
         fetch(`/api/suggestions/mine?id=${selected.id}`, { keepalive: true });
+        fetch("/api/research", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ attendeeId: selected.id }),
+          keepalive: true,
+        });
       } catch {}
       router.push(`/e/${eventSlug}/a/${selected.id}?welcome=1`);
     } else {
@@ -78,6 +85,7 @@ export default function Claim() {
         email: email.trim(),
         eventSlug,
         lookingFor: lookingFor.trim(),
+        linkedinUrl: guestLinkedin.trim() || null,
       }),
     });
     if (res.ok) {
@@ -85,6 +93,12 @@ export default function Claim() {
       setIdentity(data.id, data.name, eventSlug);
       try {
         fetch(`/api/suggestions/mine?id=${data.id}`, { keepalive: true });
+        fetch("/api/research", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ attendeeId: data.id }),
+          keepalive: true,
+        });
       } catch {}
       router.push(`/e/${eventSlug}/a/${data.id}?welcome=1`);
     } else {
@@ -126,6 +140,13 @@ export default function Claim() {
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email"
             autoComplete="email"
+            className="w-full bg-zinc-900/60 border border-zinc-800/60 rounded-xl px-4 py-3 text-sm mb-3 outline-none focus:border-lime-300/50 placeholder:text-zinc-600"
+          />
+          <input
+            value={guestLinkedin}
+            onChange={(e) => setGuestLinkedin(e.target.value)}
+            placeholder="LinkedIn URL (optional)"
+            autoComplete="url"
             className="w-full bg-zinc-900/60 border border-zinc-800/60 rounded-xl px-4 py-3 text-sm mb-3 outline-none focus:border-lime-300/50 placeholder:text-zinc-600"
           />
           <textarea

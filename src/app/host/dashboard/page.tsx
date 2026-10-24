@@ -16,6 +16,7 @@ type FeedItem = {
   score: number;
   why: string;
   intros: number;
+  research: string | null;
 };
 type SortMode = "relevance" | "recency" | "intros";
 type Interest = {
@@ -126,6 +127,7 @@ export default function HostDashboard() {
             .then(() => fetch("/api/host/feed").then((r) => r.json()))
             .then((d2) => setFeed(d2.items ?? []))
             .catch(() => {});
+          fetch("/api/research/next", { method: "POST" }).catch(() => {});
         }
       };
 
@@ -460,6 +462,18 @@ export default function HostDashboard() {
                   <p className="text-[11px] text-zinc-400 mt-1 ml-9 leading-snug">
                     → {f.looking_for}
                   </p>
+                )}
+                {f.research && (
+                  <div className="mt-1.5 ml-9 space-y-0.5">
+                    {f.research.split("\n").map((line, i) => (
+                      <p
+                        key={i}
+                        className="text-[11px] text-zinc-500 leading-snug"
+                      >
+                        {line}
+                      </p>
+                    ))}
+                  </div>
                 )}
               </div>
             ))}

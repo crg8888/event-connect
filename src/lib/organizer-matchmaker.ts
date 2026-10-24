@@ -7,7 +7,7 @@ export async function buildOrganizerInstruction(organizerId: number): Promise<st
   if (!event) throw new Error("Register your event first.");
 
   const attendees = await sql`
-    select id, name, headline, description, luma_bio, linkedin_url, claimed, looking_for
+    select id, name, headline, description, luma_bio, linkedin_url, claimed, looking_for, research
     from attendees where event_id = ${event.id} order by claimed desc, id
   `;
 
@@ -18,6 +18,8 @@ export async function buildOrganizerInstruction(organizerId: number): Promise<st
       const about = a.description ?? a.luma_bio;
       if (about) parts.push(about);
       if (a.claimed && a.looking_for) parts.push(`WANTS TODAY: ${a.looking_for}`);
+      if (a.research)
+        parts.push(`RESEARCH: ${String(a.research).replace(/\n/g, " ")}`);
       if (a.claimed) parts.push(`[CLAIMED]`);
       if (a.linkedin_url) parts.push(`LINKEDIN: ${a.linkedin_url}`);
       return parts.join(" | ");

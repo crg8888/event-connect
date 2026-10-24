@@ -30,4 +30,5 @@ export type Attendee = {
   avatar_url: string | null;
   claimed: boolean;
   looking_for: string | null;
+  research?: string | null;
 };

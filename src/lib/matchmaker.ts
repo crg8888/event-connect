@@ -9,11 +9,11 @@ export async function buildInstruction(selfId: number | null): Promise<string> {
     : await sql`select id, name, agenda, agent_name from events order by id limit 1`;
   const attendees = (await (event
     ? sql`
-        select id, name, headline, description, luma_bio, linkedin_url, claimed, looking_for
+        select id, name, headline, description, luma_bio, linkedin_url, claimed, looking_for, research
         from attendees where event_id = ${event.id} order by id
       `
     : sql`
-        select id, name, headline, description, luma_bio, linkedin_url, claimed, looking_for
+        select id, name, headline, description, luma_bio, linkedin_url, claimed, looking_for, research
         from attendees order by id
       `)) as unknown as Attendee[];
 
@@ -27,6 +27,8 @@ export async function buildInstruction(selfId: number | null): Promise<string> {
       const about = a.description ?? a.luma_bio;
       if (about) parts.push(about);
       if (a.claimed && a.looking_for) parts.push(`WANTS TODAY: ${a.looking_for}`);
+      if (a.research)
+        parts.push(`RESEARCH (facts attendees would find interesting): ${String(a.research).replace(/\n/g, " ")}`);
       if (a.claimed) parts.push(`[LIVE · pingable]`);
       else parts.push(`[not here yet · queue a ping, they'll see it on arrival]`);
       return parts.join(" | ");

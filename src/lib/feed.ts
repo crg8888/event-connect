@@ -12,6 +12,7 @@ type FeedItem = {
   score: number;
   why: string;
   intros: number;
+  research: string | null;
 };
 
 const SCORE_TTL = 45_000;
@@ -20,7 +21,7 @@ const inflight = new Map<number, Promise<FeedItem[]>>();
 async function fetchItems(eventId: number): Promise<FeedItem[]> {
   const rows = await sql`
     select a.id, a.name, a.headline, a.linkedin_url, a.looking_for,
-           a.claimed, a.claimed_at, a.feed_score, a.feed_why,
+           a.claimed, a.claimed_at, a.feed_score, a.feed_why, a.research,
            coalesce(i.intros, 0)::int as intros
     from attendees a
     left join (
@@ -42,6 +43,7 @@ async function fetchItems(eventId: number): Promise<FeedItem[]> {
     score: a.feed_score ?? 0,
     why: a.feed_why ?? "",
     intros: a.intros,
+    research: a.research,
   }));
 }
 
@@ -84,7 +86,7 @@ async function runScoring(eventId: number): Promise<FeedItem[]> {
 
   const attendees = await sql`
     select id, name, headline, description, linkedin_url, looking_for,
-           claimed, claimed_at
+           claimed, claimed_at, research
     from attendees
     where event_id = ${eventId}
     order by claimed desc, claimed_at desc nulls last, id
@@ -138,6 +140,8 @@ ${hostAsks.map((h) => `• "${h.text}"`).join("\n")}
       if (a.headline) parts.push(a.headline);
       if (a.description) parts.push(a.description);
       if (a.claimed && a.looking_for) parts.push(`WANTS: ${a.looking_for}`);
+      if (a.research)
+        parts.push(`RESEARCH: ${String(a.research).replace(/\n/g, " ")}`);
       if (a.claimed) parts.push("[LIVE]");
       const asks = asksById.get(a.id);
       if (asks?.length) parts.push(`ASKING THE CONCIERGE ABOUT: ${asks.join(" · ")}`);
@@ -193,6 +197,7 @@ Include EVERY attendee by id. Do not invent ids. The "why" names the exact overl
       score: Math.max(1, Math.min(10, s?.score ?? 5)),
       why: s?.why ?? "",
       intros: dmById.get(a.id) ?? 0,
+      research: a.research,
     };
   });
 
