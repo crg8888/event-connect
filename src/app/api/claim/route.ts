@@ -2,16 +2,36 @@ import { NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 
 export async function POST(req: Request) {
-  const { attendeeId, lookingFor } = await req.json();
-  if (!attendeeId || typeof lookingFor !== "string") {
-    return NextResponse.json({ error: "attendeeId and lookingFor required" }, { status: 400 });
+  const { attendeeId, email, lookingFor } = await req.json();
+  if (!attendeeId || typeof email !== "string" || typeof lookingFor !== "string") {
+    return NextResponse.json(
+      { error: "attendeeId, email, and lookingFor required" },
+      { status: 400 }
+    );
   }
-  const rows = await sql`
+
+  const [row] = await sql`
+    select id, email, claimed from attendees where id = ${attendeeId}
+  `;
+  if (!row) return NextResponse.json({ error: "Attendee not found." }, { status: 404 });
+  if (row.claimed) {
+    return NextResponse.json(
+      { error: "This profile has already been claimed. Not you? Flag the host." },
+      { status: 409 }
+    );
+  }
+  if (!row.email || row.email.toLowerCase() !== email.trim().toLowerCase()) {
+    return NextResponse.json(
+      { error: "That email doesn't match the one the host RSVP'd." },
+      { status: 403 }
+    );
+  }
+
+  const [claimed] = await sql`
     update attendees
     set claimed = true, looking_for = ${lookingFor.slice(0, 300)}, claimed_at = now()
     where id = ${attendeeId}
     returning id, name, looking_for
   `;
-  if (!rows.length) return NextResponse.json({ error: "not found" }, { status: 404 });
-  return NextResponse.json(rows[0]);
+  return NextResponse.json(claimed);
 }

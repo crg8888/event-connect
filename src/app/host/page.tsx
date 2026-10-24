@@ -4,7 +4,14 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Wordmark from "@/components/Wordmark";
 
-type Guest = { name: string; email: string };
+type Guest = { name: string; email: string; linkedin_url?: string | null };
+
+const DEFAULT_WELCOME = `Hey {first_name} — I'm Hacky.
+
+Omnara's giving everyone here $500 in model credits and the AgentDemos repo:
+  gh.io/agent-demos
+
+Ask me about who's in the room and interesting connections to make. Try: "who should I meet?" or "find people building voice agents."`;
 type Enriched = {
   id: number;
   name: string;
@@ -17,6 +24,7 @@ type Enriched = {
 
 function parseCsv(text: string): Guest[] {
   const emailRe = /[^\s,;"]+@[^\s,;"]+\.[^\s,;"]+/;
+  const linkedinRe = /linkedin\.com\/[a-zA-Z0-9-/_%?=&.]+/i;
   return text
     .split(/\r?\n/)
     .map((line) => line.trim())
@@ -24,8 +32,18 @@ function parseCsv(text: string): Guest[] {
     .map((line) => {
       const cells = line.split(",").map((c) => c.trim().replace(/^"|"$/g, ""));
       const email = cells.find((c) => emailRe.test(c)) ?? "";
-      const name = cells.find((c) => c && !emailRe.test(c)) ?? "";
-      return { name, email };
+      const linkedin = cells.find((c) => linkedinRe.test(c));
+      const name =
+        cells.find((c) => c && !emailRe.test(c) && !linkedinRe.test(c)) ?? "";
+      return {
+        name,
+        email,
+        linkedin_url: linkedin
+          ? linkedin.startsWith("http")
+            ? linkedin
+            : `https://${linkedin}`
+          : null,
+      };
     })
     .filter((g) => g.email && !/^e-?mail$/i.test(g.email));
 }
@@ -36,6 +54,8 @@ export default function Host() {
   const [eventName, setEventName] = useState("");
   const [lumaUrl, setLumaUrl] = useState("");
   const [agenda, setAgenda] = useState("");
+  const [agentName, setAgentName] = useState("Hacky");
+  const [welcomeTemplate, setWelcomeTemplate] = useState(DEFAULT_WELCOME);
   const [apiKey, setApiKey] = useState("");
   const [connecting, setConnecting] = useState(false);
   const [connected, setConnected] = useState(false);
@@ -82,7 +102,13 @@ export default function Host() {
     await fetch("/api/host/event", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: eventName.trim(), lumaUrl: lumaUrl.trim(), agenda: agenda.trim() }),
+      body: JSON.stringify({
+        name: eventName.trim(),
+        lumaUrl: lumaUrl.trim(),
+        agenda: agenda.trim(),
+        agentName: agentName.trim(),
+        welcomeTemplate: welcomeTemplate.trim(),
+      }),
     });
     const res = await fetch("/api/host/import", {
       method: "POST",
@@ -217,6 +243,28 @@ export default function Host() {
               />
               <p className="text-xs text-zinc-600 mt-1.5">
                 The concierge weaves this into every introduction it makes. Guests never see it raw.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-[11px] uppercase tracking-widest text-zinc-500 mb-2">
+                04 — Your agent
+              </label>
+              <input
+                value={agentName}
+                onChange={(e) => setAgentName(e.target.value)}
+                placeholder="Agent name (e.g. Hacky)"
+                className="w-full bg-zinc-900/60 border border-zinc-800/60 rounded-xl px-4 py-3 text-sm outline-none focus:border-lime-300/50 placeholder:text-zinc-600 mb-2"
+              />
+              <textarea
+                value={welcomeTemplate}
+                onChange={(e) => setWelcomeTemplate(e.target.value)}
+                rows={6}
+                placeholder="First message every attendee sees. Use {first_name} to personalize."
+                className="w-full bg-zinc-900/60 border border-zinc-800/60 rounded-xl px-4 py-3 text-sm outline-none focus:border-lime-300/50 placeholder:text-zinc-600 font-mono"
+              />
+              <p className="text-xs text-zinc-600 mt-1.5">
+                Sent instantly when they claim their profile. {"{first_name}"} gets filled in.
               </p>
             </div>
 

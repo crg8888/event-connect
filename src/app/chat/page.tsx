@@ -12,18 +12,26 @@ type Msg =
   | { role: "agent"; text: string; matches: Match[] };
 
 const SUGGESTIONS = [
-  "Who should I meet right now?",
-  "Help me form a team for the hackathon",
-  "Who can give feedback on my project?",
+  "Help me find interesting people",
+  "Who's working on voice agents?",
+  "Who should I meet for feedback?",
 ];
+
+function fillTemplate(template: string, firstName: string) {
+  return template.replace(/\{first_name\}/gi, firstName);
+}
 
 function ChatInner() {
   const params = useSearchParams();
   const [me, setMe] = useState<Identity | null>(null);
+  const [agentName, setAgentName] = useState("Hacky");
   const [msgs, setMsgs] = useState<Msg[]>([]);
+  const [savedIds, setSavedIds] = useState<Set<number>>(new Set());
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
-  const [people, setPeople] = useState<Record<number, { linkedin_url: string | null }>>({});
+  const [people, setPeople] = useState<
+    Record<number, { linkedin_url: string | null; looking_for: string | null }>
+  >({});
   const agentIdRef = useRef<string | null>(null);
   const welcomedRef = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -31,16 +39,51 @@ function ChatInner() {
   useEffect(() => {
     const id = getIdentity();
     setMe(id);
-    fetch("/api/attendees")
+    const slug = id?.event ?? new URLSearchParams(window.location.search).get("e");
+
+    fetch(`/api/attendees${slug ? `?e=${encodeURIComponent(slug)}` : ""}`)
       .then((r) => r.json())
-      .then((rows: { id: number; linkedin_url: string | null }[]) => {
-        const map: Record<number, { linkedin_url: string | null }> = {};
-        rows.forEach((r) => (map[r.id] = { linkedin_url: r.linkedin_url }));
-        setPeople(map);
+      .then(
+        (rows: {
+          id: number;
+          linkedin_url: string | null;
+          looking_for: string | null;
+        }[]) => {
+          const map: Record<
+            number,
+            { linkedin_url: string | null; looking_for: string | null }
+          > = {};
+          rows.forEach((r) => (map[r.id] = {
+            linkedin_url: r.linkedin_url,
+            looking_for: r.looking_for,
+          }));
+          setPeople(map);
+        }
+      );
+
+    fetch(`/api/event${slug ? `?slug=${encodeURIComponent(slug)}` : ""}`)
+      .then((r) => r.json())
+      .then((ev) => {
+        if (!ev) return;
+        if (ev.agent_name) setAgentName(ev.agent_name);
+        if (params.get("welcome") === "1" && id && !welcomedRef.current) {
+          welcomedRef.current = true;
+          const firstName = id.name.split(" ")[0] || id.name;
+          const template =
+            ev.welcome_template ??
+            `Hey {first_name} — I'm ${ev.agent_name ?? "Hacky"}. Ask me who to meet.`;
+          setMsgs([
+            { role: "agent", text: fillTemplate(template, firstName), matches: [] },
+          ]);
+        }
       });
-    if (params.get("welcome") === "1" && id && !welcomedRef.current) {
-      welcomedRef.current = true;
-      void send({ welcome: true, attendeeId: id.id });
+
+    if (id) {
+      fetch(`/api/saves?ownerId=${id.id}`)
+        .then((r) => r.json())
+        .then((rows: { id: number }[]) =>
+          setSavedIds(new Set(rows.map((r) => r.id)))
+        );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -49,13 +92,17 @@ function ChatInner() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [msgs, busy]);
 
-  async function send(body: { question?: string; welcome?: boolean; attendeeId: number | null }) {
+  async function send(question: string) {
     setBusy(true);
     try {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...body, agentId: agentIdRef.current }),
+        body: JSON.stringify({
+          question,
+          attendeeId: me?.id ?? null,
+          agentId: agentIdRef.current,
+        }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error);
@@ -78,44 +125,53 @@ function ChatInner() {
     if (!question.trim() || busy) return;
     setInput("");
     setMsgs((m) => [...m, { role: "user", text: question }]);
-    await send({ question, attendeeId: me?.id ?? null });
+    await send(question);
   }
 
-  async function save(matchId: number) {
+  async function toggleSave(matchId: number) {
     if (!me) return;
+    const isSaved = savedIds.has(matchId);
+    setSavedIds((prev) => {
+      const next = new Set(prev);
+      if (isSaved) next.delete(matchId);
+      else next.add(matchId);
+      return next;
+    });
     await fetch("/api/saves", {
-      method: "POST",
+      method: isSaved ? "DELETE" : "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ownerId: me.id, savedId: matchId }),
     });
   }
 
+  const canShowSuggestions = msgs.length <= 1 && !busy;
+
   return (
-    <main className="max-w-md mx-auto px-4 pt-6 pb-24 flex flex-col min-h-screen">
+    <main className="max-w-md mx-auto px-4 pt-6 pb-6 flex flex-col min-h-screen">
       <header className="flex items-center justify-between mb-5">
-        <Wordmark className="text-lg" />
-        <span className="text-[11px] uppercase tracking-widest text-zinc-600">
-          {me ? me.name.split(" ")[0] : (
-            <Link href="/claim" className="text-lime-300">claim profile</Link>
+        <div>
+          <Wordmark className="text-lg" />
+          <p className="text-[10px] uppercase tracking-widest text-zinc-600 mt-0.5">
+            with {agentName.toLowerCase()}
+          </p>
+        </div>
+        <div className="text-right">
+          {me ? (
+            <span className="text-[11px] uppercase tracking-widest text-zinc-500">
+              {me.name.split(" ")[0]}
+            </span>
+          ) : (
+            <Link
+              href="/claim"
+              className="text-[11px] uppercase tracking-widest text-lime-300"
+            >
+              claim profile
+            </Link>
           )}
-        </span>
+        </div>
       </header>
 
       <div className="flex-1 space-y-3">
-        {msgs.length === 0 && !busy && (
-          <div className="space-y-2 pt-2">
-            {SUGGESTIONS.map((s) => (
-              <button
-                key={s}
-                onClick={() => ask(s)}
-                className="block w-full text-left bg-zinc-900/60 border border-zinc-800/60 rounded-xl px-4 py-3 text-sm text-zinc-300 hover:border-lime-300/50"
-              >
-                {s}
-              </button>
-            ))}
-          </div>
-        )}
-
         {msgs.map((m, i) =>
           m.role === "user" ? (
             <div key={i} className="flex justify-end">
@@ -126,7 +182,7 @@ function ChatInner() {
           ) : (
             <div key={i} className="space-y-2">
               {m.text && (
-                <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl rounded-bl-md px-4 py-2.5 text-sm max-w-[90%]">
+                <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl rounded-bl-md px-4 py-3 text-sm max-w-[90%] whitespace-pre-wrap">
                   {m.text}
                 </div>
               )}
@@ -150,20 +206,43 @@ function ChatInner() {
                       )}
                       {me && (
                         <button
-                          onClick={() => save(match.id)}
-                          className="text-[11px] uppercase tracking-wider text-lime-300"
+                          onClick={() => toggleSave(match.id)}
+                          className={`text-[11px] uppercase tracking-wider ${
+                            savedIds.has(match.id) ? "text-lime-300" : "text-zinc-500"
+                          }`}
                         >
-                          Shortlist
+                          {savedIds.has(match.id) ? "Saved" : "Save"}
                         </button>
                       )}
                     </div>
                   </div>
                   <p className="text-[13px] text-zinc-400 mt-1.5">{match.why}</p>
-                  <p className="text-[13px] text-lime-300/80 mt-2">&ldquo;{match.icebreaker}&rdquo;</p>
+                  {people[match.id]?.looking_for && (
+                    <p className="text-[12px] text-lime-300/70 mt-1.5">
+                      → {people[match.id].looking_for}
+                    </p>
+                  )}
+                  <p className="text-[13px] text-zinc-300 mt-2 italic">
+                    &ldquo;{match.icebreaker}&rdquo;
+                  </p>
                 </div>
               ))}
             </div>
           )
+        )}
+
+        {canShowSuggestions && (
+          <div className="space-y-2 pt-2">
+            {SUGGESTIONS.map((s) => (
+              <button
+                key={s}
+                onClick={() => ask(s)}
+                className="block w-full text-left bg-zinc-900/40 border border-zinc-800/60 rounded-xl px-4 py-2.5 text-[13px] text-zinc-400 hover:border-lime-300/50 hover:text-zinc-200"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
         )}
 
         {busy && (
@@ -179,13 +258,13 @@ function ChatInner() {
           e.preventDefault();
           ask(input);
         }}
-        className="sticky bottom-[72px] bg-black pt-3"
+        className="sticky bottom-0 bg-black pt-3"
       >
         <div className="flex gap-2">
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask the room"
+            placeholder={`Ask ${agentName.toLowerCase()}`}
             name="question"
             className="flex-1 bg-zinc-900/60 border border-zinc-800/60 rounded-xl px-4 py-3 text-sm outline-none focus:border-lime-300/50 placeholder:text-zinc-600"
           />

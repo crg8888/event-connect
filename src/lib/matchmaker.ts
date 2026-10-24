@@ -3,10 +3,10 @@ import { sql, Attendee } from "./db";
 export async function buildInstruction(selfId: number | null): Promise<string> {
   const [event] = selfId
     ? await sql`
-        select e.id, e.name, e.agenda from events e
+        select e.id, e.name, e.agenda, e.agent_name from events e
         join attendees a on a.event_id = e.id where a.id = ${selfId}
       `
-    : await sql`select id, name, agenda from events order by id limit 1`;
+    : await sql`select id, name, agenda, agent_name from events order by id limit 1`;
   const attendees = (await (event
     ? sql`
         select id, name, headline, description, luma_bio, linkedin_url, claimed, looking_for
@@ -32,7 +32,9 @@ export async function buildInstruction(selfId: number | null): Promise<string> {
     })
     .join("\n");
 
-  return `You are the Backchannel concierge at ${event?.name ?? "this event"}. Everyone below is checked in, in this room, right now.
+  const agentName = event?.agent_name || "Hacky";
+
+  return `You are ${agentName}, the Backchannel concierge at ${event?.name ?? "this event"}. If anyone asks your name, say ${agentName}. Everyone below is checked in, in this room, right now.
 
 HOST AGENDA (from the event organizer — weave it in naturally where relevant, one light touch per reply, never more; you work for the attendee first):
 ${event?.agenda ?? "none"}

@@ -11,8 +11,10 @@ export default function Claim() {
   const [people, setPeople] = useState<Person[]>([]);
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<Person | null>(null);
+  const [email, setEmail] = useState("");
   const [lookingFor, setLookingFor] = useState("");
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   const [eventSlug, setEventSlug] = useState<string | undefined>(undefined);
 
   useEffect(() => {
@@ -41,18 +43,26 @@ export default function Claim() {
   );
 
   async function submit() {
-    if (!selected || !lookingFor.trim()) return;
+    if (!selected || !email.trim() || !lookingFor.trim()) return;
     setBusy(true);
+    setError("");
     const res = await fetch("/api/claim", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ attendeeId: selected.id, lookingFor: lookingFor.trim() }),
+      body: JSON.stringify({
+        attendeeId: selected.id,
+        email: email.trim(),
+        lookingFor: lookingFor.trim(),
+      }),
     });
     if (res.ok) {
       setIdentity(selected.id, selected.name, eventSlug);
       router.push("/chat?welcome=1");
+    } else {
+      const data = await res.json().catch(() => ({}));
+      setError(data.error ?? "Could not claim this profile.");
+      setBusy(false);
     }
-    setBusy(false);
   }
 
   return (
@@ -103,6 +113,14 @@ export default function Claim() {
               not you?
             </button>
           </div>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="The email you RSVP'd with"
+            autoComplete="email"
+            className="w-full bg-zinc-900/60 border border-zinc-800/60 rounded-xl px-4 py-3 text-sm mb-3 outline-none focus:border-lime-300/50 placeholder:text-zinc-600"
+          />
           <textarea
             value={lookingFor}
             onChange={(e) => setLookingFor(e.target.value)}
@@ -111,9 +129,10 @@ export default function Claim() {
             name="lookingFor"
             className="w-full bg-zinc-900/60 border border-zinc-800/60 rounded-xl px-4 py-3 text-sm outline-none focus:border-lime-300/50 placeholder:text-zinc-600"
           />
+          {error && <p className="text-xs text-red-400 mt-2">{error}</p>}
           <button
             onClick={submit}
-            disabled={busy || !lookingFor.trim()}
+            disabled={busy || !email.trim() || !lookingFor.trim()}
             className="w-full mt-4 bg-lime-300 disabled:opacity-30 text-black font-semibold rounded-xl py-3.5 text-sm"
           >
             {busy ? "One sec" : "Enter the room"}

@@ -18,9 +18,27 @@ export async function POST(req: Request) {
   `;
   if (!event) return NextResponse.json({ error: "Register your event first" }, { status: 400 });
 
-  const emails = guests
-    .map((g: { email?: string }) => (g.email ?? "").toLowerCase().trim())
-    .filter(Boolean);
+  type GuestIn = { name?: string; email?: string; linkedin_url?: string | null };
+  const clean: GuestIn[] = guests
+    .map((g: GuestIn) => ({
+      email: (g.email ?? "").toLowerCase().trim(),
+      name: (g.name ?? "").trim(),
+      linkedin_url: g.linkedin_url?.trim() || null,
+    }))
+    .filter((g) => g.email);
+
+  const emails = clean.map((g) => g.email!);
+
+  for (const g of clean) {
+    if (!g.linkedin_url || !g.email) continue;
+    const url: string = g.linkedin_url;
+    const em: string = g.email;
+    await sql`
+      update attendees
+      set linkedin_url = ${url}
+      where lower(email) = ${em} and (linkedin_url is null or linkedin_url = '')
+    `;
+  }
 
   const matched = await sql`
     update attendees set event_id = ${event.id}
