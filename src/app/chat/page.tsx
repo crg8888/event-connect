@@ -78,27 +78,62 @@ function ChatInner() {
         }
       );
 
-    fetch(`/api/event${slug ? `?slug=${encodeURIComponent(slug)}` : ""}`)
-      .then((r) => r.json())
-      .then((ev) => {
-        if (!ev) return;
-        if (ev.agent_name) setAgentName(ev.agent_name);
-        if (params.get("welcome") === "1" && id && !welcomedRef.current) {
-          welcomedRef.current = true;
-          const firstName = id.name.split(" ")[0] || id.name;
-          const template =
-            ev.welcome_template ??
-            `Hey {first_name} — I'm ${ev.agent_name ?? "Hacky"}. Ask me who to meet.`;
-          setMsgs([
-            {
-              role: "agent",
-              text: fillTemplate(template, firstName),
-              matches: [],
-              pings: [],
-            },
-          ]);
+    (async () => {
+      const ev = await fetch(
+        `/api/event${slug ? `?slug=${encodeURIComponent(slug)}` : ""}`
+      ).then((r) => r.json());
+      if (ev?.agent_name) setAgentName(ev.agent_name);
+      if (!id) return;
+
+      type HistoryRow = {
+        id: number;
+        role: "user" | "agent" | "ping";
+        content: Record<string, unknown>;
+        agent_id: string | null;
+      };
+      const history: { messages: HistoryRow[]; latest_agent_id: string | null } =
+        await fetch(`/api/chat/history?attendeeId=${id.id}`).then((r) => r.json());
+
+      if (history.latest_agent_id) agentIdRef.current = history.latest_agent_id;
+      let highestPingId = 0;
+      const hydrated: Msg[] = history.messages.map((row) => {
+        if (row.role === "user")
+          return { role: "user", text: String(row.content.text ?? "") };
+        if (row.role === "ping") {
+          const pid = Number(row.content.id);
+          if (pid > highestPingId) highestPingId = pid;
+          return { role: "ping", ping: row.content as unknown as PingIn };
         }
+        return {
+          role: "agent",
+          text: String(row.content.text ?? ""),
+          matches: Array.isArray(row.content.matches)
+            ? (row.content.matches as Match[])
+            : [],
+          pings: Array.isArray(row.content.pings)
+            ? (row.content.pings as PingOut[])
+            : [],
+        };
       });
+      lastSeenPingRef.current = highestPingId;
+
+      if (hydrated.length) {
+        setMsgs(hydrated);
+      } else if (params.get("welcome") === "1" && !welcomedRef.current && ev) {
+        welcomedRef.current = true;
+        const firstName = id.name.split(" ")[0] || id.name;
+        const template =
+          ev.welcome_template ??
+          `Hey {first_name} — I'm ${ev.agent_name ?? "Hacky"}. Ask me who to meet.`;
+        const text = fillTemplate(template, firstName);
+        setMsgs([{ role: "agent", text, matches: [], pings: [] }]);
+        void fetch("/api/chat/log-welcome", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ attendeeId: id.id, text }),
+        }).catch(() => {});
+      }
+    })();
 
     if (id) {
       fetch(`/api/saves?ownerId=${id.id}`)
@@ -113,8 +148,6 @@ function ChatInner() {
         .catch(() => setSuggestions([]))
         .finally(() => setSuggestionsLoading(false));
 
-      // seed lastSeenPingRef so existing unread pings surface as cards on first load
-      // and poll for new ones every 7s
       const poll = async () => {
         try {
           const d = await fetch(`/api/pings/mine?id=${id.id}`).then((r) => r.json());
@@ -124,11 +157,17 @@ function ChatInner() {
             .sort((a, b) => a.id - b.id);
           if (fresh.length) {
             lastSeenPingRef.current = fresh[fresh.length - 1].id;
-            setMsgs((m) => [...m, ...fresh.map((p) => ({ role: "ping" as const, ping: p }))]);
-            fetch(`/api/pings/read`, {
+            setMsgs((m) => [
+              ...m,
+              ...fresh.map((p) => ({ role: "ping" as const, ping: p })),
+            ]);
+            fetch("/api/chat/log-pings", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ recipientId: id.id }),
+              body: JSON.stringify({
+                attendeeId: id.id,
+                pingIds: fresh.map((p) => p.id),
+              }),
             }).catch(() => {});
           }
         } catch {}

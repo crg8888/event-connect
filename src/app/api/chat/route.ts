@@ -79,6 +79,24 @@ export async function POST(req: Request) {
         update pings set read_at = now()
         where recipient_id = ${attendeeId} and read_at is null
       `.catch(() => {});
+
+      await sql`
+        insert into chat_messages (attendee_id, role, content, agent_id)
+        values (${attendeeId}, 'user', ${JSON.stringify({ text: q })}, ${finalAgentId})
+      `.catch(() => {});
+      await sql`
+        insert into chat_messages (attendee_id, role, content, agent_id)
+        values (
+          ${attendeeId},
+          'agent',
+          ${JSON.stringify({
+            text: parsed.reply,
+            matches: parsed.matches,
+            pings: persistedPings,
+          })},
+          ${finalAgentId}
+        )
+      `.catch(() => {});
     }
     return NextResponse.json({
       agentId: finalAgentId,
