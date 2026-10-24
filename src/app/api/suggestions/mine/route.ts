@@ -41,7 +41,7 @@ export async function GET(req: Request) {
       lookingFor: attendee.looking_for,
     });
     await sql`
-      update attendees set chat_suggestions = ${JSON.stringify(suggestions)}
+      update attendees set chat_suggestions = ${JSON.stringify(suggestions)}::jsonb
       where id = ${id}
     `;
     return NextResponse.json({ suggestions });

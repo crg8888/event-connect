@@ -1,8 +1,8 @@
 "use client";
 
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
+import { useParams } from "next/navigation";
 import Wordmark from "@/components/Wordmark";
 import { clearIdentity, Identity, resolveIdentity } from "@/lib/identity";
 
@@ -34,7 +34,6 @@ function fillTemplate(template: string, firstName: string) {
 }
 
 function ChatInner() {
-  const params = useSearchParams();
   const { slug: eventSlug } = useParams<{ slug: string; id: string }>();
   const [me, setMe] = useState<Identity | null>(null);
   const [agentName, setAgentName] = useState("Hacky");
@@ -60,6 +59,15 @@ function ChatInner() {
   const agentIdRef = useRef<string | null>(null);
   const welcomedRef = useRef(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const stickRef = useRef(true);
+
+  function onScroll() {
+    const el = scrollRef.current;
+    if (!el) return;
+    stickRef.current =
+      el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -139,7 +147,7 @@ function ChatInner() {
 
       if (hydrated.length) {
         setMsgs(hydrated);
-      } else if (params.get("welcome") === "1" && !welcomedRef.current && ev) {
+      } else if (!welcomedRef.current && ev) {
         welcomedRef.current = true;
         const firstName = id.name.split(" ")[0] || id.name;
         const template =
@@ -198,8 +206,10 @@ function ChatInner() {
     }
   }
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  useLayoutEffect(() => {
+    if (!stickRef.current) return;
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [msgs, busy]);
 
   async function send(question: string) {
@@ -233,6 +243,7 @@ function ChatInner() {
       ]);
     } finally {
       setBusy(false);
+      requestAnimationFrame(() => inputRef.current?.focus());
     }
   }
 
@@ -240,6 +251,7 @@ function ChatInner() {
     if (!question.trim() || busy) return;
     setInput("");
     setPingHint(null);
+    stickRef.current = true;
     setMsgs((m) => [...m, { role: "user", text: question }]);
     await send(question);
   }
@@ -293,7 +305,7 @@ function ChatInner() {
   const canShowSuggestions = msgs.length <= 1 && !busy;
 
   return (
-    <main className="max-w-md mx-auto h-[100dvh] flex flex-col pb-16">
+    <main className="fixed inset-0 max-w-md mx-auto flex flex-col pb-[calc(env(safe-area-inset-bottom)+64px)]">
       <header className="shrink-0 flex items-center justify-between px-4 pt-5 pb-3 bg-black">
         <div>
           <Wordmark className="text-lg" />
@@ -328,7 +340,11 @@ function ChatInner() {
         </div>
       </header>
 
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+      <div
+        ref={scrollRef}
+        onScroll={onScroll}
+        className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 space-y-3"
+      >
         {msgs.map((m, i) =>
           m.role === "ping" ? (
             <div key={i} className="bg-lime-300/5 border border-lime-300/40 rounded-2xl rounded-bl-md px-4 py-3">

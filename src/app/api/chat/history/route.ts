@@ -14,6 +14,15 @@ export async function GET(req: Request) {
     order by id asc
     limit 200
   `;
+  for (const r of rows) {
+    if (typeof r.content === "string") {
+      try {
+        r.content = JSON.parse(r.content);
+      } catch {
+        r.content = { text: r.content };
+      }
+    }
+  }
   const lastAgentId =
     [...rows].reverse().find((r) => r.agent_id)?.agent_id ?? null;
   return NextResponse.json({ messages: rows, latest_agent_id: lastAgentId });

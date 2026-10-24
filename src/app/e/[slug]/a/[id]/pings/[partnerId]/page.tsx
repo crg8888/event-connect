@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { Identity, resolveIdentity } from "@/lib/identity";
@@ -30,9 +30,17 @@ export default function Thread() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const stickRef = useRef(true);
   const inputRef = useRef<HTMLInputElement>(null);
   const other = Number(partnerId);
+
+  function onScroll() {
+    const el = scrollRef.current;
+    if (!el) return;
+    stickRef.current =
+      el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  }
 
   useEffect(() => {
     let timer: ReturnType<typeof setInterval> | undefined;
@@ -55,8 +63,10 @@ export default function Thread() {
     };
   }, [other]);
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  useLayoutEffect(() => {
+    if (!stickRef.current) return;
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [messages]);
 
   async function send(e: React.FormEvent) {
@@ -65,6 +75,7 @@ export default function Thread() {
     const text = input.trim();
     setInput("");
     setSending(true);
+    stickRef.current = true;
     try {
       const res = await fetch("/api/pings", {
         method: "POST",
@@ -98,7 +109,7 @@ export default function Thread() {
     eventSlug && pathId ? `/e/${eventSlug}/a/${pathId}/pings` : "/";
 
   return (
-    <main className="max-w-md mx-auto h-[100dvh] flex flex-col pb-16">
+    <main className="fixed inset-0 max-w-md mx-auto flex flex-col pb-[calc(env(safe-area-inset-bottom)+64px)]">
       <header className="shrink-0 flex items-center justify-between px-4 pt-5 pb-3 bg-black border-b border-zinc-900/80">
         <div className="flex items-center gap-3 min-w-0">
           <Link
@@ -130,7 +141,11 @@ export default function Thread() {
         )}
       </header>
 
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+      <div
+        ref={scrollRef}
+        onScroll={onScroll}
+        className="flex-1 overflow-y-auto overscroll-contain px-4 py-3 space-y-2"
+      >
         {partner?.looking_for && (
           <div className="text-[12px] text-lime-300/70 bg-lime-300/5 border border-lime-300/20 rounded-xl px-3 py-2 mb-3">
             → {partner.looking_for}
@@ -141,22 +156,33 @@ export default function Thread() {
             Say hi. Share where you are.
           </p>
         )}
-        {messages.map((m) =>
-          m.sender_id === me?.id ? (
-            <div key={m.id} className="flex justify-end">
-              <div className="bg-lime-300 text-black rounded-2xl rounded-br-md px-3.5 py-2 text-sm max-w-[85%] whitespace-pre-wrap">
+        {messages.map((m) => {
+          const mine = m.sender_id === me?.id;
+          const time = new Date(m.created_at).toLocaleTimeString([], {
+            hour: "numeric",
+            minute: "2-digit",
+          });
+          return (
+            <div key={m.id} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
+              <div
+                className={`rounded-2xl px-3.5 py-2 text-sm max-w-[85%] whitespace-pre-wrap break-words ${
+                  mine
+                    ? "bg-lime-300 text-black rounded-br-md"
+                    : "bg-zinc-900/60 border border-zinc-800/60 rounded-bl-md"
+                }`}
+              >
                 {m.message}
+                <span
+                  className={`text-[10px] ml-2 align-bottom ${
+                    mine ? "text-black/50" : "text-zinc-600"
+                  }`}
+                >
+                  {time}
+                </span>
               </div>
             </div>
-          ) : (
-            <div key={m.id} className="flex justify-start">
-              <div className="bg-zinc-900/60 border border-zinc-800/60 rounded-2xl rounded-bl-md px-3.5 py-2 text-sm max-w-[85%] whitespace-pre-wrap">
-                {m.message}
-              </div>
-            </div>
-          )
-        )}
-        <div ref={bottomRef} />
+          );
+        })}
       </div>
 
       <form

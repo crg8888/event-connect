@@ -22,7 +22,7 @@ export async function POST() {
       lumaUrl: event.luma_url,
     });
     await sql`
-      update events set organizer_suggestions = ${JSON.stringify(suggestions)}
+      update events set organizer_suggestions = ${JSON.stringify(suggestions)}::jsonb
       where id = ${event.id}
     `;
     return NextResponse.json({ suggestions });

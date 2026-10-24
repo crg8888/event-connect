@@ -82,7 +82,7 @@ export async function POST(req: Request) {
 
       await sql`
         insert into chat_messages (attendee_id, role, content, agent_id)
-        values (${attendeeId}, 'user', ${JSON.stringify({ text: q })}, ${finalAgentId})
+        values (${attendeeId}, 'user', ${JSON.stringify({ text: q })}::jsonb, ${finalAgentId})
       `.catch(() => {});
       await sql`
         insert into chat_messages (attendee_id, role, content, agent_id)
@@ -93,7 +93,7 @@ export async function POST(req: Request) {
             text: parsed.reply,
             matches: parsed.matches,
             pings: persistedPings,
-          })},
+          })}::jsonb,
           ${finalAgentId}
         )
       `.catch(() => {});

@@ -13,7 +13,7 @@ export async function POST(req: Request) {
 
   await sql`
     insert into chat_messages (attendee_id, role, content)
-    values (${attendeeId}, 'agent', ${JSON.stringify({ text, matches: [], pings: [] })})
+    values (${attendeeId}, 'agent', ${JSON.stringify({ text, matches: [], pings: [] })}::jsonb)
   `;
   return NextResponse.json({ ok: true });
 }

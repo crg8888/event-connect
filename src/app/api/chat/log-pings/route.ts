@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     if (already.length) continue;
     await sql`
       insert into chat_messages (attendee_id, role, content)
-      values (${attendeeId}, 'ping', ${JSON.stringify(p)})
+      values (${attendeeId}, 'ping', ${JSON.stringify(p)}::jsonb)
     `;
   }
 
