@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { launchAgent, sendMessage } from "@/lib/omnara";
 import { buildOrganizerInstruction } from "@/lib/organizer-matchmaker";
 import { getOrganizer } from "@/lib/auth";
+import { sql } from "@/lib/db";
 
 export const maxDuration = 60;
 
@@ -28,6 +29,13 @@ export async function POST(req: Request) {
 
   const { question, agentId } = await req.json();
   if (!question) return NextResponse.json({ error: "question required" }, { status: 400 });
+
+  void sql`
+    insert into host_messages (event_id, role, content)
+    select id, 'host', ${String(question).slice(0, 500)}
+    from events where organizer_id = ${org.id}
+    order by id desc limit 1
+  `.catch(() => {});
 
   try {
     if (agentId) {

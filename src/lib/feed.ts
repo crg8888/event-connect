@@ -13,21 +13,13 @@ type FeedItem = {
   why: string;
 };
 
-type CacheEntry = {
-  at: number;
-  items: FeedItem[];
-  scored: boolean;
-  scoredAt?: number;
-  scoringPromise?: Promise<FeedItem[]>;
-};
-const cache = new Map<number, CacheEntry>();
-const TTL = 30_000;
-const SCORE_TTL = 120_000;
+const SCORE_TTL = 45_000;
+const inflight = new Map<number, Promise<FeedItem[]>>();
 
 async function fetchItems(eventId: number): Promise<FeedItem[]> {
   const rows = await sql`
-    select id, name, headline, description, linkedin_url, looking_for,
-           claimed, claimed_at
+    select id, name, headline, linkedin_url, looking_for,
+           claimed, claimed_at, feed_score, feed_why
     from attendees
     where event_id = ${eventId}
     order by claimed desc, claimed_at desc nulls last, id
@@ -40,8 +32,8 @@ async function fetchItems(eventId: number): Promise<FeedItem[]> {
     looking_for: a.looking_for,
     claimed: a.claimed,
     claimed_at: a.claimed_at,
-    score: 0,
-    why: "",
+    score: a.feed_score ?? 0,
+    why: a.feed_why ?? "",
   }));
 }
 
@@ -49,55 +41,29 @@ export async function getFeed(eventId: number): Promise<{
   items: FeedItem[];
   scored: boolean;
 }> {
-  const now = Date.now();
-  const cached = cache.get(eventId);
-  if (cached && now - cached.at < TTL) {
-    return { items: cached.items, scored: cached.scored };
-  }
-
+  const [ev] = await sql`
+    select feed_scored_at from events where id = ${eventId}
+  `;
   const items = await fetchItems(eventId);
-  const scored = cached?.scored ?? false;
-  const nextItems =
-    cached?.scored && cached.items.length === items.length
-      ? items.map((it) => {
-          const prev = cached.items.find((p) => p.id === it.id);
-          return prev
-            ? { ...it, score: prev.score, why: prev.why }
-            : it;
-        })
-      : items;
-  cache.set(eventId, {
-    at: now,
-    items: nextItems,
-    scored,
-    scoredAt: cached?.scoredAt,
-    scoringPromise: cached?.scoringPromise,
-  });
-  return { items: nextItems, scored };
+  return { items, scored: Boolean(ev?.feed_scored_at) };
 }
 
 export async function scoreFeed(eventId: number): Promise<FeedItem[]> {
-  const existing = cache.get(eventId);
-  if (existing?.scoringPromise) return existing.scoringPromise;
+  const existing = inflight.get(eventId);
+  if (existing) return existing;
+
+  const [ev] = await sql`
+    select feed_scored_at from events where id = ${eventId}
+  `;
   if (
-    existing?.scored &&
-    existing.scoredAt &&
-    Date.now() - existing.scoredAt < SCORE_TTL
+    ev?.feed_scored_at &&
+    Date.now() - new Date(ev.feed_scored_at).getTime() < SCORE_TTL
   ) {
-    return existing.items;
+    return fetchItems(eventId);
   }
 
-  const promise = runScoring(eventId).finally(() => {
-    const e = cache.get(eventId);
-    if (e) e.scoringPromise = undefined;
-  });
-  cache.set(eventId, {
-    at: existing?.at ?? Date.now(),
-    items: existing?.items ?? [],
-    scored: existing?.scored ?? false,
-    scoredAt: existing?.scoredAt,
-    scoringPromise: promise,
-  });
+  const promise = runScoring(eventId).finally(() => inflight.delete(eventId));
+  inflight.set(eventId, promise);
   return promise;
 }
 
@@ -117,7 +83,7 @@ async function runScoring(eventId: number): Promise<FeedItem[]> {
   `;
 
   if (attendees.length === 0) {
-    cache.set(eventId, { at: now, items: [], scored: true, scoredAt: now });
+    await sql`update events set feed_scored_at = now() where id = ${eventId}`;
     return [];
   }
 
@@ -144,6 +110,20 @@ async function runScoring(eventId: number): Promise<FeedItem[]> {
   `;
   const dmById = new Map<number, number>(dmCounts.map((d) => [d.id, d.sent]));
 
+  const hostAsks = await sql`
+    select left(content, 200) as text
+    from host_messages
+    where event_id = ${eventId} and role = 'host'
+    order by id desc
+    limit 12
+  `;
+  const hostBlock = hostAsks.length
+    ? `
+HOST'S LIVE PRIORITIES (what the organizer has been asking their concierge today, newest first — if the host explicitly states a purpose or what kind of people they care about, that OVERRIDES the written agenda for scoring):
+${hostAsks.map((h) => `• "${h.text}"`).join("\n")}
+`
+    : "";
+
   const roster = attendees
     .map((a) => {
       const parts = [`#${a.id} ${a.name}`];
@@ -165,7 +145,7 @@ EVENT: ${event.name}
 
 ORGANIZER AGENDA (treat this as the host's primary objective — potential customers, hires, teammates for the host team, warm doors, or anyone materially useful to the agenda):
 ${event.agenda}
-
+${hostBlock}
 FULL ROSTER (every attendee on the guest list — those marked [LIVE] have already claimed their profile and are physically in the room; treat [LIVE] as a strong actionability bonus but still rank unclaimed attendees so the organizer can prep outreach):
 ${roster}
 
@@ -207,10 +187,20 @@ Include EVERY attendee by id. Do not invent ids. The "why" names the exact overl
     };
   });
 
-  cache.set(eventId, { at: now, items, scored: true, scoredAt: Date.now() });
+  for (const it of items) {
+    await sql`
+      update attendees set feed_score = ${it.score}, feed_why = ${it.why}
+      where id = ${it.id}
+    `;
+  }
+  await sql`update events set feed_scored_at = now() where id = ${eventId}`;
+
   return items;
 }
 
 export function invalidateFeedCache(eventId: number) {
-  cache.delete(eventId);
+  // force an immediate rescore on next nudge
+  void sql`update events set feed_scored_at = null where id = ${eventId}`.catch(
+    () => {}
+  );
 }

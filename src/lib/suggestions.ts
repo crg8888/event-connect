@@ -44,19 +44,18 @@ export async function generateOrganizerSuggestions(input: {
   const lumaTitle = input.lumaUrl ? await fetchLumaTitle(input.lumaUrl) : null;
   const lumaLine = lumaTitle ? `LUMA EVENT TITLE: ${lumaTitle}` : "";
 
-  const instruction = `You generate 3 short chip prompts for the organizer's concierge chatbot on their event dashboard. The organizer taps these to find useful people in the room FAST.
+  const instruction = `You generate 3 short chip prompts for the HOST COMPANY's concierge on their event dashboard. The host is the company RUNNING this event — infer the company and what it sells from the event name and agenda (e.g. an "Omnara Hackathon" is hosted by Omnara, an agent-infrastructure company). The host's real goal is pipeline: turning this room into customers, hires, partners, and champions for THEIR product.
 
 EVENT NAME: ${input.eventName}
 ${lumaLine}
-ORGANIZER AGENDA (what the host wants out of this room):
+EVENT AGENDA (note: this text is written FOR attendees — do NOT copy its voice; you speak for the host):
 ${input.agenda}
 
 RULES:
-- 3 questions, max 8 words each.
-- Written in the organizer's voice — think "sharp chief of staff."
-- Specific to THIS event's agenda, not generic networking fluff.
-- No "the room" / "attendees" filler. Just the request.
-- Each should surface a different kind of person (customer, hire, teammate, partner, door-opener). Don't repeat angles.
+- 3 questions, max 9 words each, in the HOST's voice ("our product", "us", or the company name). NEVER attendee voice — no "my skills", "my agent", "my team", no builder-speak.
+- Each chip is a lead-qualification ask about the room: who could become a paying customer, who should we demo to, who's hiring-grade talent, who's influential enough to champion us.
+- One distinct angle per chip (customer / hire / partner-or-champion). Don't repeat angles.
+- Specific to this company and event, zero generic networking fluff.
 
 Output VALID JSON only, no markdown fences:
 {"suggestions": ["...", "...", "..."]}`;
