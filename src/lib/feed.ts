@@ -15,7 +15,6 @@ type FeedItem = {
   research: string | null;
 };
 
-const SCORE_TTL = 45_000;
 const inflight = new Map<number, Promise<FeedItem[]>>();
 
 async function fetchItems(eventId: number): Promise<FeedItem[]> {
@@ -65,10 +64,8 @@ export async function scoreFeed(eventId: number): Promise<FeedItem[]> {
   const [ev] = await sql`
     select feed_scored_at from events where id = ${eventId}
   `;
-  if (
-    ev?.feed_scored_at &&
-    Date.now() - new Date(ev.feed_scored_at).getTime() < SCORE_TTL
-  ) {
+  // only rescore when a signal invalidated the feed (claim, chat, ping, host ask, research)
+  if (ev?.feed_scored_at) {
     return fetchItems(eventId);
   }
 

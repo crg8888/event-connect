@@ -66,6 +66,10 @@ export async function POST(req: Request) {
     from events where organizer_id = ${org.id}
     order by id desc limit 1
   `.catch(() => {});
+  // a host ask is a scoring signal (live priorities may have changed)
+  void sql`
+    update events set feed_scored_at = null where organizer_id = ${org.id}
+  `.catch(() => {});
 
   try {
     let raw: string;

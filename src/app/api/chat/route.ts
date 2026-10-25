@@ -97,6 +97,11 @@ export async function POST(req: Request) {
           ${finalAgentId}
         )
       `.catch(() => {});
+      // chat activity is a scoring signal
+      void sql`
+        update events set feed_scored_at = null
+        where id = (select event_id from attendees where id = ${attendeeId})
+      `.catch(() => {});
     }
     return NextResponse.json({
       agentId: finalAgentId,

@@ -67,12 +67,30 @@ export async function researchAttendee(attendeeId: number): Promise<boolean> {
   if (!claimed) return false;
 
   const [a] = await sql`
-    select a.id, a.name, a.headline, a.description, a.linkedin_url, a.research,
-           e.name as event_name, e.agenda
+    select a.id, a.name, a.email, a.headline, a.description, a.linkedin_url,
+           a.research, a.event_id, e.name as event_name, e.agenda
     from attendees a join events e on e.id = a.event_id
     where a.id = ${attendeeId}
   `;
   if (!a) return false;
+
+  // research happens once per person — reuse facts from the profile bank
+  if (a.email) {
+    const [prof] = await sql`
+      select research from profiles
+      where email = ${String(a.email).toLowerCase()} and research is not null
+    `;
+    if (prof) {
+      await sql`
+        update attendees set research = ${prof.research}, researched_at = now()
+        where id = ${attendeeId}
+      `;
+      await sql`
+        update events set feed_scored_at = null where id = ${a.event_id}
+      `.catch(() => {});
+      return true;
+    }
+  }
 
   try {
     const firstSegment = (a.headline ?? "").split(/[|·,@]/)[0].trim();
@@ -121,6 +139,16 @@ Output VALID JSON only, no markdown fences:
       update attendees set research = ${combined}, researched_at = now()
       where id = ${attendeeId}
     `;
+    if (a.email) {
+      await sql`
+        update profiles set research = ${combined}
+        where email = ${String(a.email).toLowerCase()}
+      `.catch(() => {});
+    }
+    // fresh facts are a scoring signal
+    await sql`
+      update events set feed_scored_at = null where id = ${a.event_id}
+    `.catch(() => {});
     return true;
   } catch {
     await sql`update attendees set researched_at = null where id = ${attendeeId}`;

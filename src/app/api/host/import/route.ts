@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     }
     // pre-enriched profile bank — base bios survive event wipes
     const [prof] = await sql`
-      select name, headline, description, linkedin_url
+      select name, headline, description, linkedin_url, research
       from profiles where email = ${em}
     `;
     if (prof) {
@@ -52,11 +52,13 @@ export async function POST(req: Request) {
       await sql`
         insert into attendees (
           name, first_name, last_name, email, linkedin_url, headline,
-          description, event_id, claimed
+          description, research, researched_at, event_id, claimed
         ) values (
           ${nm}, ${pf}, ${pr.join(" ") || null}, ${em},
           ${g.linkedin_url ?? prof.linkedin_url ?? null},
-          ${prof.headline}, ${prof.description}, ${event.id}, false
+          ${prof.headline}, ${prof.description},
+          ${prof.research}, ${prof.research ? new Date() : null},
+          ${event.id}, false
         )
       `;
       continue;
