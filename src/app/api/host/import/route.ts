@@ -60,6 +60,7 @@ export async function POST(req: Request) {
           ${prof.research}, ${prof.research ? new Date() : null},
           ${event.id}, false
         )
+        on conflict do nothing
       `;
       continue;
     }
@@ -83,12 +84,14 @@ export async function POST(req: Request) {
           ${elsewhere.avatar_url}, ${elsewhere.research}, ${elsewhere.researched_at},
           ${event.id}, false
         )
+        on conflict do nothing
       `;
     } else {
       const [first, ...rest] = (g.name || em).split(/\s+/);
       await sql`
         insert into attendees (name, first_name, last_name, email, linkedin_url, event_id, claimed)
         values (${g.name || em}, ${first}, ${rest.join(" ") || null}, ${em}, ${g.linkedin_url ?? null}, ${event.id}, false)
+        on conflict do nothing
       `;
     }
   }

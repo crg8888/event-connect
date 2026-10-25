@@ -13,7 +13,7 @@ type FeedItem = {
   looking_for: string | null;
   claimed: boolean;
   claimed_at: string | null;
-  score: number;
+  score: number | null;
   why: string;
   intros: number;
   research: string | null;
@@ -64,7 +64,7 @@ export default function HostDashboard() {
     if (sortMode === "relevance") {
       items.sort(
         (a, b) =>
-          b.score - a.score ||
+          (b.score ?? 0) - (a.score ?? 0) ||
           Number(b.claimed) - Number(a.claimed) ||
           a.name.localeCompare(b.name)
       );
@@ -72,7 +72,7 @@ export default function HostDashboard() {
       items.sort(
         (a, b) =>
           b.intros - a.intros ||
-          b.score - a.score ||
+          (b.score ?? 0) - (a.score ?? 0) ||
           a.name.localeCompare(b.name)
       );
     } else {
@@ -397,14 +397,16 @@ export default function HostDashboard() {
                   <div className="flex items-center gap-2 min-w-0">
                     <span
                       className={`text-[10px] uppercase tracking-widest font-semibold w-7 text-center py-0.5 rounded ${
-                        f.score >= 8
-                          ? "text-black bg-lime-300"
-                          : f.score >= 6
-                            ? "text-lime-300 border border-lime-300/60"
-                            : "text-zinc-500 border border-zinc-700"
+                        f.score === null
+                          ? "text-zinc-600 border border-zinc-800 animate-pulse"
+                          : f.score >= 8
+                            ? "text-black bg-lime-300"
+                            : f.score >= 6
+                              ? "text-lime-300 border border-lime-300/60"
+                              : "text-zinc-500 border border-zinc-700"
                       }`}
                     >
-                      {f.score}
+                      {f.score ?? "…"}
                     </span>
                     <span
                       className={`text-sm font-medium truncate ${

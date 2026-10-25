@@ -9,7 +9,7 @@ type FeedItem = {
   looking_for: string | null;
   claimed: boolean;
   claimed_at: string | null;
-  score: number;
+  score: number | null;
   why: string;
   intros: number;
   research: string | null;
@@ -39,7 +39,7 @@ async function fetchItems(eventId: number): Promise<FeedItem[]> {
     looking_for: a.looking_for,
     claimed: a.claimed,
     claimed_at: a.claimed_at,
-    score: a.feed_score ?? 0,
+    score: a.feed_score ?? null,
     why: a.feed_why ?? "",
     intros: a.intros,
     research: a.research,

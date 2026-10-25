@@ -133,6 +133,8 @@ export default function Host() {
 
   async function launch() {
     if (!ready) return;
+    // flip to the research screen instantly — the work happens underneath
+    setPhase("enriching");
     await fetch("/api/host/event", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -151,10 +153,9 @@ export default function Host() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ guests }),
     });
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     setEnriched(data.enriched ?? []);
     setLinkedinCount(data.linkedinCount ?? 0);
-    setPhase("enriching");
 
     const rows: Enriched[] = data.enriched ?? [];
     let i = 0;
@@ -405,7 +406,7 @@ export default function Host() {
                 </span>
               </div>
             ))}
-            {progress < enriched.length && (
+            {(enriched.length === 0 || progress < enriched.length) && (
               <div className="text-lime-300 animate-pulse">researching…</div>
             )}
           </div>
