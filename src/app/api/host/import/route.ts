@@ -41,6 +41,26 @@ export async function POST(req: Request) {
       }
       continue;
     }
+    // pre-enriched profile bank — base bios survive event wipes
+    const [prof] = await sql`
+      select name, headline, description, linkedin_url
+      from profiles where email = ${em}
+    `;
+    if (prof) {
+      const nm = g.name || prof.name || em;
+      const [pf, ...pr] = nm.split(/\s+/);
+      await sql`
+        insert into attendees (
+          name, first_name, last_name, email, linkedin_url, headline,
+          description, event_id, claimed
+        ) values (
+          ${nm}, ${pf}, ${pr.join(" ") || null}, ${em},
+          ${g.linkedin_url ?? prof.linkedin_url ?? null},
+          ${prof.headline}, ${prof.description}, ${event.id}, false
+        )
+      `;
+      continue;
+    }
     // same person at another event — copy their profile, never move them
     const [elsewhere] = await sql`
       select name, first_name, last_name, email, linkedin_url, headline,
