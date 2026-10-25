@@ -27,25 +27,55 @@ export async function POST(req: Request) {
     }))
     .filter((g) => g.email);
 
-  const emails = clean.map((g) => g.email!);
-
   for (const g of clean) {
-    if (!g.linkedin_url || !g.email) continue;
-    const url: string = g.linkedin_url;
-    const em: string = g.email;
-    await sql`
-      update attendees
-      set linkedin_url = ${url}
-      where lower(email) = ${em} and (linkedin_url is null or linkedin_url = '')
+    const em: string = g.email!;
+    const [inEvent] = await sql`
+      select id from attendees where lower(email) = ${em} and event_id = ${event.id}
     `;
+    if (inEvent) {
+      if (g.linkedin_url) {
+        await sql`
+          update attendees set linkedin_url = ${g.linkedin_url}
+          where id = ${inEvent.id} and (linkedin_url is null or linkedin_url = '')
+        `;
+      }
+      continue;
+    }
+    // same person at another event — copy their profile, never move them
+    const [elsewhere] = await sql`
+      select name, first_name, last_name, email, linkedin_url, headline,
+             description, luma_bio, avatar_url, research, researched_at
+      from attendees where lower(email) = ${em}
+      order by researched_at desc nulls last limit 1
+    `;
+    if (elsewhere) {
+      await sql`
+        insert into attendees (
+          name, first_name, last_name, email, linkedin_url, headline,
+          description, luma_bio, avatar_url, research, researched_at,
+          event_id, claimed
+        ) values (
+          ${elsewhere.name}, ${elsewhere.first_name}, ${elsewhere.last_name},
+          ${elsewhere.email}, ${g.linkedin_url ?? elsewhere.linkedin_url},
+          ${elsewhere.headline}, ${elsewhere.description}, ${elsewhere.luma_bio},
+          ${elsewhere.avatar_url}, ${elsewhere.research}, ${elsewhere.researched_at},
+          ${event.id}, false
+        )
+      `;
+    } else {
+      const [first, ...rest] = (g.name || em).split(/\s+/);
+      await sql`
+        insert into attendees (name, first_name, last_name, email, linkedin_url, event_id, claimed)
+        values (${g.name || em}, ${first}, ${rest.join(" ") || null}, ${em}, ${g.linkedin_url ?? null}, ${event.id}, false)
+      `;
+    }
   }
 
   const matched = await sql`
-    update attendees set event_id = ${event.id}
-    where lower(email) = any(${emails})
-    returning id, name, email, linkedin_url, headline, description, luma_bio, avatar_url
+    select id, name, email, linkedin_url, headline, description, luma_bio, avatar_url
+    from attendees where event_id = ${event.id}
+    order by name
   `;
-  matched.sort((a, b) => a.name.localeCompare(b.name));
 
   return NextResponse.json({
     total: guests.length,

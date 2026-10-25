@@ -123,10 +123,7 @@ export default function HostDashboard() {
         setFeed(d.items ?? []);
         setFeedLoading(false);
         if ((d.items ?? []).length > 0) {
-          fetch("/api/host/feed/score", { method: "POST" })
-            .then(() => fetch("/api/host/feed").then((r) => r.json()))
-            .then((d2) => setFeed(d2.items ?? []))
-            .catch(() => {});
+          fetch("/api/host/feed/score", { method: "POST" }).catch(() => {});
           fetch("/api/research/next", { method: "POST" }).catch(() => {});
         }
       };

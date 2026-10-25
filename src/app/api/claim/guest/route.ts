@@ -21,15 +21,15 @@ export async function POST(req: Request) {
   if (!event) return NextResponse.json({ error: "Event not found." }, { status: 404 });
 
   const existing = await sql`
-    select id, claimed from attendees where lower(email) = ${cleanEmail}
+    select id, claimed from attendees
+    where lower(email) = ${cleanEmail} and event_id = ${event.id}
   `;
   if (existing.length) {
-    // email already on the roster — treat as re-login (updates purpose, keeps claim)
+    // email already on this event's roster — treat as re-login (updates purpose, keeps claim)
     const row = existing[0];
     const [updated] = await sql`
       update attendees set
         claimed = true,
-        event_id = ${event.id},
         looking_for = ${lookingFor.slice(0, 300)},
         linkedin_url = coalesce(${cleanLinkedin}, linkedin_url),
         claimed_at = now()
